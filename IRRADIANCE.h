@@ -25,12 +25,13 @@ class IRRADIANCE{
         const int _G_STC = 1000;
         const float _U_STC = 0.0000189;
         const float _TEMPERATURE_STC = 25;
+      
         File _irradianceFile;
         RTC_DS3231 _rtc;
         DateTime _now;
-
-        void _setupRTC();
+        
         void _setupSD();
+        void _setupRTC();
 };
 
 

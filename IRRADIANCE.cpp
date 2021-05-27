@@ -1,18 +1,16 @@
 #include "IRRADIANCE.h"
 
-
 void IRRADIANCE::setup(uint8_t sensor, uint8_t time_read){
     _sensor = sensor;
     _time_read = time_read;
 
     Serial.begin(9600);
 
-    _setupRTC();
     _setupSD();
+    _setupRTC();
 }
 
 void IRRADIANCE::_setupRTC(){
-    _now = _rtc.now();
     if (! _rtc.begin()) {
         Serial.println("Couldn't find RTC");
         Serial.flush();
@@ -29,6 +27,7 @@ void IRRADIANCE::_setupRTC(){
         // January 21, 2014 at 3am you would call:
         // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
     }
+
 }
 
 
@@ -45,7 +44,7 @@ void IRRADIANCE::_setupSD(){
     }
     Serial.println("initialization done.");
 
-    _irradianceFile = SD.open("irradiance.txt", FILE_WRITE);
+    _irradianceFile = SD.open("001.txt", FILE_WRITE);
 
     // if the file opened okay, write to it:
     if (_irradianceFile) {
@@ -73,8 +72,10 @@ float IRRADIANCE::getIrradiance(){
 }
 
 void IRRADIANCE::writeIrradiance(){
+    _now = _rtc.now();
     Serial.print(_now.second(), DEC);
-    //Serial.println(" " + _time_read);      
+    //Serial.println(" " + _time_read);   
+    _irradianceFile = SD.open("001.txt", FILE_WRITE);
     if(_now.second()%_time_read == 0){
         if (_irradianceFile) {
             Serial.print("Writing to Irradiance.txt...");
@@ -90,9 +91,9 @@ void IRRADIANCE::writeIrradiance(){
             _irradianceFile.print(':');
             _irradianceFile.print(_now.second(), DEC);
             _irradianceFile.print(')');
-            _irradianceFile.print(' IRRADIANCE: ');
+            _irradianceFile.print(" IRRADIANCE: ");
             _irradianceFile.print(getIrradiance());
-            _irradianceFile.print('W/m^2');
+            _irradianceFile.println("W/m^2");
             // close the file:
             _irradianceFile.close();
             Serial.println("done.");
