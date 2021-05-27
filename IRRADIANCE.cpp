@@ -32,9 +32,7 @@ void IRRADIANCE::_setupRTC(){
 
 
 void IRRADIANCE::_setupSD(){
-    while (!Serial) {
-        ; // wait for serial port to connect. Needed for native USB port only
-    }
+
 
     Serial.print("Initializing SD card...");
 
@@ -47,14 +45,7 @@ void IRRADIANCE::_setupSD(){
     _irradianceFile = SD.open("001.txt", FILE_WRITE);
 
     // if the file opened okay, write to it:
-    if (_irradianceFile) {
-        Serial.print("Writing to test.txt...");
-        _irradianceFile.println("testing 1, 2, 3.");
-        // close the file:
-        _irradianceFile.close();
-        Serial.println("done.");
-    } else {
-        // if the file didn't open, print an error:
+    if (!_irradianceFile) {
         Serial.println("error opening irradiance.txt");
     }       
 }
@@ -73,7 +64,7 @@ float IRRADIANCE::getIrradiance(){
 
 void IRRADIANCE::writeIrradiance(){
     _now = _rtc.now();
-    Serial.print(_now.second(), DEC);
+    //Serial.print(_now.second(), DEC);
     //Serial.println(" " + _time_read);   
     _irradianceFile = SD.open("001.txt", FILE_WRITE);
     if(_now.second()%_time_read == 0){
@@ -95,13 +86,26 @@ void IRRADIANCE::writeIrradiance(){
             _irradianceFile.print(getIrradiance());
             _irradianceFile.println("W/m^2");
             // close the file:
-            _irradianceFile.close();
             Serial.println("done.");
         } else {
             // if the file didn't open, print an error:
             Serial.println("error opening test.txt");
         }
     }
+    _irradianceFile.close();
 
+}
+
+
+void IRRADIANCE::getTimeTemperature(){
+    _now = _rtc.now();
+    Serial.print(_now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(_now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(_now.second(), DEC);
+    Serial.print(')');
+    Serial.print(" temp: ");
+    Serial.println(_rtc.getTemperature());
 }
 

@@ -17,6 +17,7 @@ class IRRADIANCE{
         void setup(uint8_t sensor, uint8_t time_read);
         float getIrradiance();
         void writeIrradiance();
+        void getTimeTemperature();
 
     private:
         uint8_t _sensor;
