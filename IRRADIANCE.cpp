@@ -8,6 +8,7 @@ void IRRADIANCE::setup(uint8_t sensor, uint8_t time_read){
 
     _setupSD();
     _setupRTC();
+    _setupINA219();
 }
 
 void IRRADIANCE::_setupRTC(){
@@ -32,8 +33,6 @@ void IRRADIANCE::_setupRTC(){
 
 
 void IRRADIANCE::_setupSD(){
-
-
     Serial.print("Initializing SD card...");
 
     if (!SD.begin(4)) {
@@ -48,6 +47,20 @@ void IRRADIANCE::_setupSD(){
     if (!_irradianceFile) {
         Serial.println("error opening irradiance.txt");
     }       
+}
+
+void IRRADIANCE::_setupINA219(){
+    // Initialize the INA219.
+    // By default the initialization will use the largest range (32V, 2A).  However
+    // you can call a setCalibration function to change this range (see comments).
+    if (! _ina219.begin()) {
+        Serial.println("Failed to find INA219 chip");
+        while (1) { delay(10); }
+    }
+    // To use a slightly lower 32V, 1A range (higher precision on amps):
+    //ina219.setCalibration_32V_1A();
+    // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
+    _ina219.setCalibration_16V_400mA();
 }
 
 float IRRADIANCE::getIrradiance(){
@@ -96,6 +109,27 @@ void IRRADIANCE::writeIrradiance(){
 
 }
 
+void IRRADIANCE::writeCurrentVoltage(){
+    float shuntvoltage = 0;
+    float busvoltage = 0;
+    float current_mA = 0;
+    float loadvoltage = 0;
+    float power_mW = 0;
+
+    shuntvoltage = _ina219.getShuntVoltage_mV();
+    busvoltage = _ina219.getBusVoltage_V();
+    current_mA = _ina219.getCurrent_mA();
+    power_mW = _ina219.getPower_mW();
+    loadvoltage = busvoltage + (shuntvoltage / 1000);
+  
+    Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
+    Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
+    Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
+    Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
+    Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
+    Serial.println("");
+}
+
 
 void IRRADIANCE::getTimeTemperature(){
     _now = _rtc.now();
@@ -109,3 +143,21 @@ void IRRADIANCE::getTimeTemperature(){
     Serial.println(_rtc.getTemperature());
 }
 
+
+void IRRADIANCE::readSD(){
+    // re-open the file for reading:
+    _irradianceFile = SD.open("001.txt");
+    if (_irradianceFile) {
+        Serial.println("001.txt:");
+
+        // read from the file until there's nothing else in it:
+        while (_irradianceFile.available()) {
+            Serial.write(_irradianceFile.read());
+        }
+        // close the file:
+        _irradianceFile.close();
+    } else {
+        // if the file didn't open, print an error:
+        Serial.println("error opening test.txt");
+    }
+}

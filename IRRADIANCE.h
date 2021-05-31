@@ -5,6 +5,10 @@
 #include <SD.h>
 #include "RTClib.h"
 #include "Arduino.h"
+#include <Wire.h>
+#include <Adafruit_INA219.h>
+
+
 
 
 class IRRADIANCE{
@@ -17,7 +21,9 @@ class IRRADIANCE{
         void setup(uint8_t sensor, uint8_t time_read);
         float getIrradiance();
         void writeIrradiance();
+        void writeCurrentVoltage();
         void getTimeTemperature();
+        void readSD();
 
     private:
         uint8_t _sensor;
@@ -30,9 +36,11 @@ class IRRADIANCE{
         File _irradianceFile;
         RTC_DS3231 _rtc;
         DateTime _now;
+        Adafruit_INA219 _ina219;
         
         void _setupSD();
         void _setupRTC();
+        void _setupINA219();
 };
 
 
