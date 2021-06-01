@@ -10,7 +10,6 @@
 
 
 
-
 class IRRADIANCE{
     public:
         float V_OC;
@@ -18,12 +17,15 @@ class IRRADIANCE{
         float G_SENSOR;
         float temperature_RTC;
 
+        enum placas{monocristalina, policristalina};  
         void setup(uint8_t sensor, uint8_t time_read);
-        float getIrradiance();
+        float getISC_AD627();
+        float getIrradiance(placas pvcell);
         void writeIrradiance();
         void writeCurrentVoltage();
         void getTimeTemperature();
         void readSD();
+       
 
     private:
         uint8_t _sensor;
@@ -32,6 +34,7 @@ class IRRADIANCE{
         const int _G_STC = 1000;
         const float _U_STC = 0.0000189;
         const float _TEMPERATURE_STC = 25;
+         
       
         File _irradianceFile;
         RTC_DS3231 _rtc;
@@ -41,6 +44,7 @@ class IRRADIANCE{
         void _setupSD();
         void _setupRTC();
         void _setupINA219();
+      
 };
 
 

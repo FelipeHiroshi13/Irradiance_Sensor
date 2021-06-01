@@ -63,22 +63,33 @@ void IRRADIANCE::_setupINA219(){
     _ina219.setCalibration_16V_400mA();
 }
 
-float IRRADIANCE::getIrradiance(){
+float IRRADIANCE::getISC_AD627(){
     float V_OC;
     float I_SC;
 
     temperature_RTC = _rtc.getTemperature();
 
     V_OC = (float(analogRead(_sensor))/ float(1023))*3.3;;
-    I_SC = (V_OC/float(470))/float(0.1);
+    return(V_OC/float(470))/float(0.1);
+}
 
+float IRRADIANCE::getIrradiance(placas pvcell){
+
+    if(pvcell == monocristalina){
+        I_SC = getISC_AD627();
+        temperature_RTC = _rtc.getTemperature();
+    }else{
+        I_SC = _ina219.getCurrent_mA()/1000;
+        temperature_RTC = 25;
+    }
+    
     return(I_SC * _G_STC) / (_I_SC_STC + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
 }
 
 void IRRADIANCE::writeIrradiance(){
     _now = _rtc.now();
     //Serial.print(_now.second(), DEC);
-    //Serial.println(" " + _time_read);   
+    Serial.println(" " + _time_read);   
     _irradianceFile = SD.open("001.txt", FILE_WRITE);
     if(_now.second()%_time_read == 0){
         if (_irradianceFile) {
@@ -96,7 +107,7 @@ void IRRADIANCE::writeIrradiance(){
             _irradianceFile.print(_now.second(), DEC);
             _irradianceFile.print(')');
             _irradianceFile.print(" IRRADIANCE: ");
-            _irradianceFile.print(getIrradiance());
+            _irradianceFile.print(getIrradiance(0));
             _irradianceFile.println("W/m^2");
             // close the file:
             Serial.println("done.");
