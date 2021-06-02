@@ -65,7 +65,6 @@ void IRRADIANCE::_setupINA219(){
 
 float IRRADIANCE::getISC_AD627(){
     float V_OC;
-    float I_SC;
 
     temperature_RTC = _rtc.getTemperature();
 
@@ -78,12 +77,18 @@ float IRRADIANCE::getIrradiance(placas pvcell){
     if(pvcell == monocristalina){
         I_SC = getISC_AD627();
         temperature_RTC = _rtc.getTemperature();
+        return(I_SC * _G_STC) / (_I_SC_STC_MONO + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
     }else{
         I_SC = _ina219.getCurrent_mA()/1000;
         temperature_RTC = 25;
+        return(I_SC * _G_STC) / (_I_SC_STC_POLI + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
     }
-    
-    return(I_SC * _G_STC) / (_I_SC_STC + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
+
+}
+
+
+float IRRADIANCE::getINA219current(){
+    return _ina219.getCurrent_mA();
 }
 
 void IRRADIANCE::writeIrradiance(){

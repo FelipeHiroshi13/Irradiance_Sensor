@@ -21,6 +21,7 @@ class IRRADIANCE{
         void setup(uint8_t sensor, uint8_t time_read);
         float getISC_AD627();
         float getIrradiance(placas pvcell);
+        float getINA219current();
         void writeIrradiance();
         void writeCurrentVoltage();
         void getTimeTemperature();
@@ -30,10 +31,13 @@ class IRRADIANCE{
     private:
         uint8_t _sensor;
         uint8_t _time_read;
-        const float _I_SC_STC = 0.0419;
         const int _G_STC = 1000;
-        const float _U_STC = 0.0000189;
         const float _TEMPERATURE_STC = 25;
+
+        const float _I_SC_STC_MONO = 0.0419;
+        const float _U_STC = 0.0000189;
+
+        const float _I_SC_STC_POLI = 0.03;
          
       
         File _irradianceFile;
