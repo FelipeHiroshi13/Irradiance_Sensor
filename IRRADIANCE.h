@@ -22,10 +22,13 @@ class IRRADIANCE{
         float getISC_AD627();
         float getIrradiance(placas pvcell);
         float getINA219current();
-        void writeIrradiance();
-        void writeCurrentVoltage();
         void getTimeTemperature();
+
+        void writeIrradiance(placas pvcell);
+        void writeCurrentVoltage();
+        void writeCurrent();
         void readSD();
+        void movePVcell();
        
 
     private:
@@ -34,13 +37,20 @@ class IRRADIANCE{
         const int _G_STC = 1000;
         const float _TEMPERATURE_STC = 25;
 
-        const float _I_SC_STC_MONO = 0.0419;
+        const float _I_SC_STC_MONO = 0.04;
         const float _U_STC = 0.0000189;
 
         const float _I_SC_STC_POLI = 0.03;
+
+        int _topleft;
+        int _topright;
+        int _downleft;
+        int _downright;
+        int _waittime = 1;
          
       
         File _irradianceFile;
+        File _currentFile;
         RTC_DS3231 _rtc;
         DateTime _now;
         Adafruit_INA219 _ina219;
@@ -48,7 +58,9 @@ class IRRADIANCE{
         void _setupSD();
         void _setupRTC();
         void _setupINA219();
+        void _setupPVCELL();
       
+        void _textIrradiance(File file, placas pvcell);
 };
 
 

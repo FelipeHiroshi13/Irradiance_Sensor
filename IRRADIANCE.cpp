@@ -6,9 +6,23 @@ void IRRADIANCE::setup(uint8_t sensor, uint8_t time_read){
 
     Serial.begin(9600);
 
+    _setupINA219();
     _setupSD();
     _setupRTC();
-    _setupINA219();
+    _setupPVCELL();
+}
+
+void IRRADIANCE::_setupPVCELL(){
+    pinMode(9, OUTPUT);
+    pinMode(10, OUTPUT);
+    pinMode(3, OUTPUT);
+    TCCR1A = 0;
+    TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << WGM11);
+    TCCR1B = 0;
+    TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
+    ICR1 = 40000;
+    OCR1A = 3000;
+    OCR1B = 3600;
 }
 
 void IRRADIANCE::_setupRTC(){
@@ -61,6 +75,7 @@ void IRRADIANCE::_setupINA219(){
     //ina219.setCalibration_32V_1A();
     // Or to use a lower 16V, 400mA range (higher precision on volts and amps):
     _ina219.setCalibration_16V_400mA();
+    Serial.println("INA219");
 }
 
 float IRRADIANCE::getISC_AD627(){
@@ -73,56 +88,93 @@ float IRRADIANCE::getISC_AD627(){
 }
 
 float IRRADIANCE::getIrradiance(placas pvcell){
-
     if(pvcell == monocristalina){
         I_SC = getISC_AD627();
-        temperature_RTC = _rtc.getTemperature();
+        temperature_RTC = 25;
         return(I_SC * _G_STC) / (_I_SC_STC_MONO + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
     }else{
         I_SC = _ina219.getCurrent_mA()/1000;
-        temperature_RTC = 25;
+        temperature_RTC = _rtc.getTemperature();
         return(I_SC * _G_STC) / (_I_SC_STC_POLI + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
     }
 
 }
 
 
+
 float IRRADIANCE::getINA219current(){
-    return _ina219.getCurrent_mA();
+    return (_ina219.getCurrent_mA()/100);
 }
 
-void IRRADIANCE::writeIrradiance(){
-    _now = _rtc.now();
-    //Serial.print(_now.second(), DEC);
-    Serial.println(" " + _time_read);   
-    _irradianceFile = SD.open("001.txt", FILE_WRITE);
+void IRRADIANCE::writeCurrent(){
+    _currentFile = SD.open("current.txt", FILE_WRITE);
+    if(_currentFile){
+        Serial.print("Writing current...");
+        _currentFile.print(_now.day(), DEC);
+        _currentFile.print('/');
+        _currentFile.print(_now.month(), DEC);
+        _currentFile.print('/');
+        _currentFile.print(_now.year(), DEC);
+        _currentFile.print('(');
+        _currentFile.print(_now.hour(), DEC);
+        _currentFile.print(':');
+        _currentFile.print(_now.minute(), DEC);
+        _currentFile.print(':');
+        _currentFile.print(_now.second(), DEC);
+        _currentFile.print(')');
+        _currentFile.print(_ina219.getCurrent_mA()/1000);
+        _currentFile.println("mA");
+        _currentFile.print(" IRRADIANCE: ");
+    }else{
+        // if the file didn't open, print an error:
+        Serial.println("error opening test.txt");
+    }
+    _currentFile.close();
+}
+
+void IRRADIANCE::writeIrradiance(placas pvcell){
+    if(pvcell == monocristalina){
+        _irradianceFile = SD.open("mono.txt", FILE_WRITE);
+    }else{
+        _irradianceFile = SD.open("poli.txt", FILE_WRITE);
+    }
+
     if(_now.second()%_time_read == 0){
-        if (_irradianceFile) {
+       _textIrradiance(_irradianceFile, pvcell);
+    }
+    _irradianceFile.close();
+
+}
+
+void IRRADIANCE::_textIrradiance(File file, placas pvcell){
+    _now = _rtc.now();
+     if (file) {
             Serial.print("Writing to Irradiance.txt...");
-            _irradianceFile.print(_now.day(), DEC);
-            _irradianceFile.print('/');
-            _irradianceFile.print(_now.month(), DEC);
-            _irradianceFile.print('/');
-            _irradianceFile.print(_now.year(), DEC);
-            _irradianceFile.print('(');
-            _irradianceFile.print(_now.hour(), DEC);
-            _irradianceFile.print(':');
-            _irradianceFile.print(_now.minute(), DEC);
-            _irradianceFile.print(':');
-            _irradianceFile.print(_now.second(), DEC);
-            _irradianceFile.print(')');
-            _irradianceFile.print(" IRRADIANCE: ");
-            _irradianceFile.print(getIrradiance(0));
-            _irradianceFile.println("W/m^2");
+            file.print(_now.day(), DEC);
+            file.print('/');
+            file.print(_now.month(), DEC);
+            file.print('/');
+            file.print(_now.year(), DEC);
+            file.print('(');
+            file.print(_now.hour(), DEC);
+            file.print(':');
+            file.print(_now.minute(), DEC);
+            file.print(':');
+            file.print(_now.second(), DEC);
+            file.print(')');
+            file.print(" IRRADIANCE: ");
+            if(pvcell = monocristalina){
+                file.print(getIrradiance(0));
+                writeCurrent();
+            }else
+                file.print(getIrradiance(1));
+            file.println("W/m^2");
             // close the file:
             Serial.println("done.");
         } else {
             // if the file didn't open, print an error:
             Serial.println("error opening test.txt");
         }
-    }
-    _irradianceFile.close();
-
 }
 
 void IRRADIANCE::writeCurrentVoltage(){
@@ -176,4 +228,60 @@ void IRRADIANCE::readSD(){
         // if the file didn't open, print an error:
         Serial.println("error opening test.txt");
     }
+}
+
+void IRRADIANCE::movePVcell(){
+    _topleft = analogRead(A1);
+    _topright = analogRead(A2);
+    _downleft = analogRead(A3);
+    _downright = analogRead(A4);
+    
+    digitalWrite(3, HIGH);
+    delay(10);
+
+    if (_topleft > _topright) {
+        OCR1A = OCR1A + 1;
+        delay(_waittime);
+    }
+    if (_downleft > _downright) {
+        OCR1A = OCR1A + 1;
+        delay(_waittime);
+    }
+    if (_topleft < _topright) {
+        OCR1A = OCR1A - 1;
+        delay(_waittime);
+    }
+    if (_downleft < _downright) {
+        OCR1A = OCR1A - 1;
+        delay(_waittime);
+    }
+    if (OCR1A > 4000) {
+        OCR1A = 4000;
+    }
+    if (OCR1A < 2000) {
+        OCR1A = 2000;
+    }
+    if (_topleft > _downleft) {
+        OCR1B = OCR1B - 1;
+        delay(_waittime);
+    }
+    if (_topright > _downright) {
+        OCR1B = OCR1B - 1;
+        delay(_waittime);
+    }
+    if (_topleft < _downleft) {
+        OCR1B = OCR1B + 1;
+        delay(_waittime);
+    }
+    if (_topright < _downright) {
+        OCR1B = OCR1B + 1;
+        delay(_waittime);
+    }
+    if (OCR1B > 4200) {
+        OCR1B = 4200;
+    }
+    if (OCR1B < 3000) {
+        OCR1B = 3000;
+    }
+    digitalWrite(3, LOW);
 }
