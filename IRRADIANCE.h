@@ -23,6 +23,7 @@ class IRRADIANCE{
         float getIrradiance(placas pvcell);
         float getINA219current();
         void getTimeTemperature();
+        int getRTCseconds();
 
         void writeIrradiance(placas pvcell);
         void writeCurrentVoltage();

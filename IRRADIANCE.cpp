@@ -6,16 +6,16 @@ void IRRADIANCE::setup(uint8_t sensor, uint8_t time_read){
 
     Serial.begin(9600);
 
+    _setupPVCELL();
     _setupINA219();
     _setupSD();
     _setupRTC();
-    _setupPVCELL();
 }
 
 void IRRADIANCE::_setupPVCELL(){
     pinMode(9, OUTPUT);
     pinMode(10, OUTPUT);
-    pinMode(3, OUTPUT);
+    pinMode(3, INPUT);
     TCCR1A = 0;
     TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << WGM11);
     TCCR1B = 0;
@@ -146,6 +146,11 @@ void IRRADIANCE::writeIrradiance(placas pvcell){
 
 }
 
+int IRRADIANCE::getRTCseconds(){
+    _now = _rtc.now();
+    return _now.second();
+}
+
 void IRRADIANCE::_textIrradiance(File file, placas pvcell){
     _now = _rtc.now();
      if (file) {
@@ -200,6 +205,16 @@ void IRRADIANCE::writeCurrentVoltage(){
 
 
 void IRRADIANCE::getTimeTemperature(){
+    
+     if (_rtc.lostPower()) {
+        Serial.println("RTC lost power, let's set the time!");
+        // When time needs to be set on a new device, or after a power loss, the
+        // following line sets the RTC to the date & time this sketch was compiled
+        _rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        // This line sets the RTC with an explicit date & time, for example to set
+        // January 21, 2014 at 3am you would call:
+        // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
+    }
     _now = _rtc.now();
     Serial.print(_now.hour(), DEC);
     Serial.print(':');
@@ -209,6 +224,7 @@ void IRRADIANCE::getTimeTemperature(){
     Serial.print(')');
     Serial.print(" temp: ");
     Serial.println(_rtc.getTemperature());
+
 }
 
 
@@ -231,13 +247,13 @@ void IRRADIANCE::readSD(){
 }
 
 void IRRADIANCE::movePVcell(){
+    digitalWrite(3, HIGH);
+    delay(1);
+
     _topleft = analogRead(A1);
     _topright = analogRead(A2);
     _downleft = analogRead(A3);
     _downright = analogRead(A4);
-    
-    digitalWrite(3, HIGH);
-    delay(10);
 
     if (_topleft > _topright) {
         OCR1A = OCR1A + 1;
