@@ -38,7 +38,7 @@ class IRRADIANCE{
         const int _G_STC = 1000;
         const float _TEMPERATURE_STC = 25;
 
-        const float _I_SC_STC_MONO = 0.04;
+        const float _I_SC_STC_MONO = 0.034977;
         const float _U_STC = 0.0000189;
 
         const float _I_SC_STC_POLI = 0.03;
@@ -47,7 +47,7 @@ class IRRADIANCE{
         int _topright;
         int _downleft;
         int _downright;
-        int _waittime = 1;
+        int _waittime = 2;
          
       
         File _irradianceFile;

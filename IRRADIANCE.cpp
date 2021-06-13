@@ -22,7 +22,12 @@ void IRRADIANCE::_setupPVCELL(){
     TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
     ICR1 = 40000;
     OCR1A = 3000;
-    OCR1B = 3600;
+    OCR1B = 4000;
+
+
+    while(1){
+        movePVcell();
+    }
 }
 
 void IRRADIANCE::_setupRTC(){
@@ -255,42 +260,48 @@ void IRRADIANCE::movePVcell(){
     _downleft = analogRead(A3);
     _downright = analogRead(A4);
 
-    if (_topleft > _topright) {
-        OCR1A = OCR1A + 1;
+    /*Serial.println(_topleft);
+    Serial.println(_topright);
+    Serial.println(_downleft);
+    Serial.println(_downright);
+    Serial.println("");*/
+
+    if (_topleft > _topright+2) {
+        OCR1A = OCR1A + 5;
         delay(_waittime);
     }
-    if (_downleft > _downright) {
-        OCR1A = OCR1A + 1;
+    if (_downleft > _downright+2) {
+        OCR1A = OCR1A + 5;
         delay(_waittime);
     }
-    if (_topleft < _topright) {
-        OCR1A = OCR1A - 1;
+    if (_topleft < _topright+2) {
+        OCR1A = OCR1A - 5;
         delay(_waittime);
     }
-    if (_downleft < _downright) {
-        OCR1A = OCR1A - 1;
+    if (_downleft < _downright+2) {
+        OCR1A = OCR1A - 5;
         delay(_waittime);
     }
-    if (OCR1A > 4000) {
-        OCR1A = 4000;
+    if (OCR1A > 5000) {
+        OCR1A = 5000;
     }
-    if (OCR1A < 2000) {
-        OCR1A = 2000;
+    if (OCR1A < 1000) {
+        OCR1A = 1000;
     }
     if (_topleft > _downleft) {
-        OCR1B = OCR1B - 1;
+        OCR1B = OCR1B - 5;
         delay(_waittime);
     }
-    if (_topright > _downright) {
-        OCR1B = OCR1B - 1;
+    if (_topright > _downright+2) {
+        OCR1B = OCR1B - 5;
         delay(_waittime);
     }
-    if (_topleft < _downleft) {
-        OCR1B = OCR1B + 1;
+    if (_topleft < _downleft+2) {
+        OCR1B = OCR1B + 5;
         delay(_waittime);
     }
     if (_topright < _downright) {
-        OCR1B = OCR1B + 1;
+        OCR1B = OCR1B + 5;
         delay(_waittime);
     }
     if (OCR1B > 4200) {
