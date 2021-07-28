@@ -17,24 +17,39 @@ class IRRADIANCE{
         float G_SENSOR;
         float temperature_RTC;
 
+        //SENSORS AND SETUP
         enum placas{monocristalina, policristalina};  
-        void setup(uint8_t sensor, uint8_t time_read);
+        void setup(uint8_t sensor);
         float getISC_AD627();
         float getIrradiance(placas pvcell);
         float getINA219current();
         void getTimeTemperature();
         int getRTCseconds();
-
+        bool isTimeRead();
+        
+        //Calculate Irradaiance
         void writeIrradiance(placas pvcell);
         void writeCurrentVoltage();
         void writeCurrent();
         void readSD();
         void movePVcell();
+
+        //Serial
+        void runTimeSensor();
+        void showCommands();
+        String getValue(String data, char separator, int index);
+        void setTimeMeasure();
+        void compareCommands();
+
        
+
+
 
     private:
         uint8_t _sensor;
-        uint8_t _time_read;
+        uint32_t _timeRead;
+
+
         const int _G_STC = 1000;
         const float _TEMPERATURE_STC = 25;
 
@@ -48,12 +63,16 @@ class IRRADIANCE{
         int _downleft;
         int _downright;
         int _waittime = 2;
-         
+        
+        bool _definedCommands;
+        bool _definedTime;
+
       
         File _irradianceFile;
         File _currentFile;
         RTC_DS3231 _rtc;
         DateTime _now;
+        DateTime _future;
         Adafruit_INA219 _ina219;
         
         void _setupSD();

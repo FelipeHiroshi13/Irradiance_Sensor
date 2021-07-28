@@ -1,15 +1,21 @@
 #include "IRRADIANCE.h"
 
-void IRRADIANCE::setup(uint8_t sensor, uint8_t time_read){
+void IRRADIANCE::setup(uint8_t sensor){
     _sensor = sensor;
-    _time_read = time_read;
+
+    _definedCommands = false;
+    _definedTime = false;
 
     Serial.begin(9600);
 
-    _setupPVCELL();
-    _setupINA219();
-    _setupSD();
-    _setupRTC();
+    while (!Serial) ;
+
+    showCommands();
+
+    //_setupPVCELL();
+    //_setupINA219();
+    //_setupSD();
+    //_setupRTC();
 }
 
 void IRRADIANCE::_setupPVCELL(){
@@ -25,7 +31,7 @@ void IRRADIANCE::_setupPVCELL(){
     OCR1B = 4000;
 
 
-    while(1){
+    for(int i = 0; i < 600; i++){
         movePVcell();
     }
 }
@@ -144,11 +150,19 @@ void IRRADIANCE::writeIrradiance(placas pvcell){
         _irradianceFile = SD.open("poli.txt", FILE_WRITE);
     }
 
-    if(_now.second()%_time_read == 0){
+    if(_now.second()%_timeRead == 0){
        _textIrradiance(_irradianceFile, pvcell);
     }
     _irradianceFile.close();
 
+}
+
+bool IRRADIANCE::isTimeRead(){
+    _now = _rtc.now();
+    if(_now.unixtime() == _timeRead){
+        return true;
+    }
+    return false;
 }
 
 int IRRADIANCE::getRTCseconds(){
@@ -260,12 +274,6 @@ void IRRADIANCE::movePVcell(){
     _downleft = analogRead(A3);
     _downright = analogRead(A4);
 
-    /*Serial.println(_topleft);
-    Serial.println(_topright);
-    Serial.println(_downleft);
-    Serial.println(_downright);
-    Serial.println("");*/
-
     if (_topleft > _topright+2) {
         OCR1A = OCR1A + 5;
         delay(_waittime);
@@ -311,4 +319,131 @@ void IRRADIANCE::movePVcell(){
         OCR1B = 3000;
     }
     digitalWrite(3, LOW);
+}
+
+void IRRADIANCE::showCommands(){
+  if(!_definedCommands){
+      compareCommands();
+  }
+  Serial.println("--------------------------------------------------------");
+  Serial.println("|\t\t Shield Irradiance \t\t\t|");
+  Serial.println("| Digite o comando para o modo de operacao");
+  Serial.println("| 1 - Armazenar DATA - HORA - Irradiancia(W/m^2)");
+  Serial.println("| 2 - Armazenar DATA - Irradiancia(W/m^2)");
+  Serial.println("| 3 - Armazenar HORA - Irradiancia(W/m^2)");
+  Serial.println("| a - Tesao e Corrente Canal 1");
+  Serial.println("| b - Tesao e Corrente Canal 2");
+  Serial.println("| c - Tesao e Corrente Canal 3");
+  Serial.println("| t - Tempo ATtiny85");
+  Serial.println("| d -  Apagar dados armazenados");
+  Serial.println("| s - Desativar monitor Serial\n\n");
+}
+
+String IRRADIANCE::getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length()-1;
+
+  for(int i=0; i<=maxIndex && found<=index; i++){
+    if(data.charAt(i)==separator || i==maxIndex){
+        found++;
+        strIndex[0] = strIndex[1]+1;
+        strIndex[1] = (i == maxIndex) ? i+1 : i;
+    }
+  }
+
+  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+
+void IRRADIANCE::setTimeMeasure(){
+
+  String timeRead = "";
+  char character;
+  while(Serial.available()) {
+       character = Serial.read();
+       timeRead.concat(character);
+  }
+  
+  if (timeRead != "" && timeRead.indexOf(":") >  0) {
+    String hourIrradiance = getValue(timeRead,':',0);
+    String minuteIrradiance = getValue(timeRead,':',1);
+    String secondIrradiance = getValue(timeRead,':',2);
+    if((hourIrradiance.toInt() + minuteIrradiance.toInt() + secondIrradiance.toInt()) > 0){
+      _definedTime = true;
+      Serial.print("Intervalo de ");
+      Serial.print(hourIrradiance);
+      Serial.print(":");
+      Serial.print(minuteIrradiance);
+      if(secondIrradiance.toInt() > 0){
+         Serial.print(":");
+         Serial.print(secondIrradiance);
+      }
+      Serial.println("definido com sucesso \n");
+      _definedCommands =  false;
+      _future = _rtc.now() + TimeSpan(0, hourIrradiance.toInt(), minuteIrradiance.toInt(),secondIrradiance.toInt());
+      _timeRead = _future.unixtime();
+      Serial.println(_timeRead);
+      Serial.println(_rtc.now().unixtime());
+    }else{
+      Serial.println("Digite um tempo válido no formato h:m:s");
+    }
+  }
+}
+
+
+void IRRADIANCE::compareCommands(){
+
+  char character;
+  while(Serial.available()) {
+     character = Serial.read();
+     if(character != '\n' && character != '\r'){
+       switch (character){
+        case '1':
+          _definedCommands = true;
+          Serial.println("caso 1");
+          Serial.println("| Defina o intervalo de tempo (h:m:s)\n");
+          while(!_definedTime){
+            setTimeMeasure();
+          }
+          break;
+        case '2':
+          Serial.println("caso 2");
+          break;
+        case '3':
+          Serial.println("caso 3");
+          break;
+        case 'a':
+          Serial.println("caso a");
+          break;
+        case 'b':
+          Serial.println("caso b");
+          break;
+        case 'c':
+          Serial.println("caso c");
+          break;
+        case 'd':
+          Serial.println("Deletando Dados");
+          //showAdvancedCommands();
+          break;
+        case 's':
+          Serial.println("Desativando Monitor Serial");
+          //showAdvancedCommands();
+          break;
+        default:
+          Serial.println("Digite um comando válido");
+          break;
+       }
+     }
+  }
+  _definedTime = false;
+
+}
+
+
+void IRRADIANCE::runTimeSensor(){
+  if(!_definedCommands){
+    compareCommands();
+  }
 }
