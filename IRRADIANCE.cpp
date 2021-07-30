@@ -12,28 +12,10 @@ void IRRADIANCE::setup(uint8_t sensor){
 
     showCommands();
 
-    //_setupPVCELL();
+    _setupRTC();
     //_setupINA219();
-    //_setupSD();
-    //_setupRTC();
-}
-
-void IRRADIANCE::_setupPVCELL(){
-    pinMode(9, OUTPUT);
-    pinMode(10, OUTPUT);
-    pinMode(3, INPUT);
-    TCCR1A = 0;
-    TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << WGM11);
-    TCCR1B = 0;
-    TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
-    ICR1 = 40000;
-    OCR1A = 3000;
-    OCR1B = 4000;
-
-
-    for(int i = 0; i < 600; i++){
-        movePVcell();
-    }
+    _setupSD();
+    
 }
 
 void IRRADIANCE::_setupRTC(){
@@ -58,7 +40,10 @@ void IRRADIANCE::_setupRTC(){
 
 
 void IRRADIANCE::_setupSD(){
-    Serial.print("Initializing SD card...");
+    //TODO nome arquivo com data
+    sprintf(_filename, "%02d%02d%02dPvcell.txt", _rtc.now().day(),_rtc.now().month(), _rtc.now().year());
+
+    Serial.print(_filename);
 
     if (!SD.begin(4)) {
         Serial.println("initialization failed!");
@@ -66,12 +51,15 @@ void IRRADIANCE::_setupSD(){
     }
     Serial.println("initialization done.");
 
-    _irradianceFile = SD.open("001.txt", FILE_WRITE);
+    _irradianceFile = SD.open("felipe.txt", FILE_WRITE);
 
     // if the file opened okay, write to it:
     if (!_irradianceFile) {
         Serial.println("error opening irradiance.txt");
-    }       
+    }  
+
+    _irradianceFile.close();     
+
 }
 
 void IRRADIANCE::_setupINA219(){
@@ -111,31 +99,19 @@ float IRRADIANCE::getIrradiance(placas pvcell){
 
 }
 
-
-
 float IRRADIANCE::getINA219current(){
     return (_ina219.getCurrent_mA()/100);
 }
 
 void IRRADIANCE::writeCurrent(){
-    _currentFile = SD.open("current.txt", FILE_WRITE);
+    Serial.print("entrei");
+    _currentFile = SD.open("001.txt", FILE_WRITE);
     if(_currentFile){
         Serial.print("Writing current...");
-        _currentFile.print(_now.day(), DEC);
-        _currentFile.print('/');
-        _currentFile.print(_now.month(), DEC);
-        _currentFile.print('/');
-        _currentFile.print(_now.year(), DEC);
-        _currentFile.print('(');
-        _currentFile.print(_now.hour(), DEC);
-        _currentFile.print(':');
-        _currentFile.print(_now.minute(), DEC);
-        _currentFile.print(':');
-        _currentFile.print(_now.second(), DEC);
-        _currentFile.print(')');
-        _currentFile.print(_ina219.getCurrent_mA()/1000);
-        _currentFile.println("mA");
-        _currentFile.print(" IRRADIANCE: ");
+        _formatTime(ina219, _currentFile);
+        _currentFile.println(" TESTE");
+        // _currentFile.print(_ina219.getCurrent_mA()/1000);
+        // _currentFile.println("mA");
     }else{
         // if the file didn't open, print an error:
         Serial.println("error opening test.txt");
@@ -145,24 +121,15 @@ void IRRADIANCE::writeCurrent(){
 
 void IRRADIANCE::writeIrradiance(placas pvcell){
     if(pvcell == monocristalina){
-        _irradianceFile = SD.open("mono.txt", FILE_WRITE);
+        _irradianceFile = SD.open(_filename, FILE_WRITE);
     }else{
-        _irradianceFile = SD.open("poli.txt", FILE_WRITE);
+        _irradianceFile = SD.open("poliT.txt", FILE_WRITE);
     }
 
-    if(_now.second()%_timeRead == 0){
-       _textIrradiance(_irradianceFile, pvcell);
-    }
+    _textIrradiance(_irradianceFile, pvcell);
+
     _irradianceFile.close();
 
-}
-
-bool IRRADIANCE::isTimeRead(){
-    _now = _rtc.now();
-    if(_now.unixtime() == _timeRead){
-        return true;
-    }
-    return false;
 }
 
 int IRRADIANCE::getRTCseconds(){
@@ -170,35 +137,24 @@ int IRRADIANCE::getRTCseconds(){
     return _now.second();
 }
 
-void IRRADIANCE::_textIrradiance(File file, placas pvcell){
-    _now = _rtc.now();
-     if (file) {
-            Serial.print("Writing to Irradiance.txt...");
-            file.print(_now.day(), DEC);
-            file.print('/');
-            file.print(_now.month(), DEC);
-            file.print('/');
-            file.print(_now.year(), DEC);
-            file.print('(');
-            file.print(_now.hour(), DEC);
-            file.print(':');
-            file.print(_now.minute(), DEC);
-            file.print(':');
-            file.print(_now.second(), DEC);
-            file.print(')');
-            file.print(" IRRADIANCE: ");
-            if(pvcell = monocristalina){
-                file.print(getIrradiance(0));
-                writeCurrent();
-            }else
-                file.print(getIrradiance(1));
-            file.println("W/m^2");
-            // close the file:
-            Serial.println("done.");
-        } else {
-            // if the file didn't open, print an error:
-            Serial.println("error opening test.txt");
-        }
+void IRRADIANCE::_textIrradiance(File file, placas pvcellMeasure){
+  _now = _rtc.now();
+  if (file) {
+    Serial.print("Writing to Irradiance.txt...");
+    _formatTime(pvcell, file);
+    file.println("TESTE");
+    // if(pvcellMeasure = monocristalina){
+    //     file.print(getIrradiance(0));
+    // }else
+    //     file.print(getIrradiance(1));
+    // file.println("W/m^2");
+    // close the file:
+    Serial.println("done.");
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println("error opening teste Irradiance.txt");
+  }
+  file.close(); 
 }
 
 void IRRADIANCE::writeCurrentVoltage(){
@@ -220,6 +176,29 @@ void IRRADIANCE::writeCurrentVoltage(){
     Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
     Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
     Serial.println("");
+}
+
+void IRRADIANCE::_formatTime(sensors sensor, File file){
+    if(_caseTime == 0){
+        file.print(_now.day(), DEC);
+        file.print('/');
+        file.print(_now.month(), DEC);
+        file.print('/');
+        file.print(_now.year(), DEC);
+    }
+    file.print('(');
+    file.print(_now.hour(), DEC);
+    file.print(':');
+    file.print(_now.minute(), DEC);
+    file.print(':');
+    file.print(_now.second(), DEC);
+    file.print(')');
+    if(sensor = pvcell){
+        file.print(" IRRADIANCE: ");
+    }else{
+        file.print(" CURRENT: ");
+    }
+    
 }
 
 
@@ -265,62 +244,6 @@ void IRRADIANCE::readSD(){
     }
 }
 
-void IRRADIANCE::movePVcell(){
-    digitalWrite(3, HIGH);
-    delay(1);
-
-    _topleft = analogRead(A1);
-    _topright = analogRead(A2);
-    _downleft = analogRead(A3);
-    _downright = analogRead(A4);
-
-    if (_topleft > _topright+2) {
-        OCR1A = OCR1A + 5;
-        delay(_waittime);
-    }
-    if (_downleft > _downright+2) {
-        OCR1A = OCR1A + 5;
-        delay(_waittime);
-    }
-    if (_topleft < _topright+2) {
-        OCR1A = OCR1A - 5;
-        delay(_waittime);
-    }
-    if (_downleft < _downright+2) {
-        OCR1A = OCR1A - 5;
-        delay(_waittime);
-    }
-    if (OCR1A > 5000) {
-        OCR1A = 5000;
-    }
-    if (OCR1A < 1000) {
-        OCR1A = 1000;
-    }
-    if (_topleft > _downleft) {
-        OCR1B = OCR1B - 5;
-        delay(_waittime);
-    }
-    if (_topright > _downright+2) {
-        OCR1B = OCR1B - 5;
-        delay(_waittime);
-    }
-    if (_topleft < _downleft+2) {
-        OCR1B = OCR1B + 5;
-        delay(_waittime);
-    }
-    if (_topright < _downright) {
-        OCR1B = OCR1B + 5;
-        delay(_waittime);
-    }
-    if (OCR1B > 4200) {
-        OCR1B = 4200;
-    }
-    if (OCR1B < 3000) {
-        OCR1B = 3000;
-    }
-    digitalWrite(3, LOW);
-}
-
 void IRRADIANCE::showCommands(){
   if(!_definedCommands){
       compareCommands();
@@ -329,7 +252,7 @@ void IRRADIANCE::showCommands(){
   Serial.println("|\t\t Shield Irradiance \t\t\t|");
   Serial.println("| Digite o comando para o modo de operacao");
   Serial.println("| 1 - Armazenar DATA - HORA - Irradiancia(W/m^2)");
-  Serial.println("| 2 - Armazenar DATA - Irradiancia(W/m^2)");
+  //Serial.println("| 2 - Armazenar DATA - Irradiancia(W/m^2)");
   Serial.println("| 3 - Armazenar HORA - Irradiancia(W/m^2)");
   Serial.println("| a - Tesao e Corrente Canal 1");
   Serial.println("| b - Tesao e Corrente Canal 2");
@@ -356,8 +279,7 @@ String IRRADIANCE::getValue(String data, char separator, int index)
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-
-void IRRADIANCE::setTimeMeasure(){
+void IRRADIANCE::setTimeMeasure(sensors sensor){
 
   String timeRead = "";
   char character;
@@ -367,24 +289,34 @@ void IRRADIANCE::setTimeMeasure(){
   }
   
   if (timeRead != "" && timeRead.indexOf(":") >  0) {
-    String hourIrradiance = getValue(timeRead,':',0);
-    String minuteIrradiance = getValue(timeRead,':',1);
-    String secondIrradiance = getValue(timeRead,':',2);
-    if((hourIrradiance.toInt() + minuteIrradiance.toInt() + secondIrradiance.toInt()) > 0){
+    String hourSensor = getValue(timeRead,':',0);
+    String minuteSensor = getValue(timeRead,':',1);
+    String secondSensor = getValue(timeRead,':',2);
+    if((hourSensor.toInt() + minuteSensor.toInt() + secondSensor.toInt()) > 0){
       _definedTime = true;
       Serial.print("Intervalo de ");
-      Serial.print(hourIrradiance);
+      Serial.print(hourSensor);
       Serial.print(":");
-      Serial.print(minuteIrradiance);
-      if(secondIrradiance.toInt() > 0){
+      Serial.print(minuteSensor);
+      if(secondSensor.toInt() > 0){
          Serial.print(":");
-         Serial.print(secondIrradiance);
+         Serial.print(secondSensor);
       }
       Serial.println("definido com sucesso \n");
       _definedCommands =  false;
-      _future = _rtc.now() + TimeSpan(0, hourIrradiance.toInt(), minuteIrradiance.toInt(),secondIrradiance.toInt());
-      _timeRead = _future.unixtime();
-      Serial.println(_timeRead);
+      _hourSensor = hourSensor.toInt();
+      _minuteSensor = minuteSensor.toInt();
+      _secondSensor = secondSensor.toInt();
+      _future = _rtc.now() + TimeSpan(0, hourSensor.toInt(), minuteSensor.toInt(),secondSensor.toInt());
+      // TODO: ANALISAR SE É VALIDO 
+    //   if(sensor == pvcell){
+    //     _timeReadIrradiance = _future.unixtime();
+    //   }else if(sensor == ina219){
+    //     _timeReadIna = _future.unixtime();
+    //   }
+      _reloadTimeRead();
+
+      Serial.println(_timeReadIrradiance);
       Serial.println(_rtc.now().unixtime());
     }else{
       Serial.println("Digite um tempo válido no formato h:m:s");
@@ -392,6 +324,28 @@ void IRRADIANCE::setTimeMeasure(){
   }
 }
 
+void IRRADIANCE::showTime(){
+    _now = _rtc.now();
+    Serial.print(_now.year(), DEC);
+    Serial.print('/');
+    Serial.print(_now.month(), DEC);
+    Serial.print('/');
+    Serial.print(_now.day(), DEC);
+    Serial.print(" (");
+    Serial.print(") ");
+    Serial.print(_now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(_now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(_now.second(), DEC);
+    Serial.println();
+}
+
+void IRRADIANCE::_reloadTimeRead(){
+    _future = _rtc.now() + TimeSpan(0, _hourSensor, _minuteSensor, _secondSensor);
+    _timeReadIrradiance = _future.unixtime();
+    _timeReadIna = _future.unixtime();
+}
 
 void IRRADIANCE::compareCommands(){
 
@@ -401,27 +355,28 @@ void IRRADIANCE::compareCommands(){
      if(character != '\n' && character != '\r'){
        switch (character){
         case '1':
-          _definedCommands = true;
-          Serial.println("caso 1");
-          Serial.println("| Defina o intervalo de tempo (h:m:s)\n");
-          while(!_definedTime){
-            setTimeMeasure();
-          }
+          Serial.println("---DATA - HORA - Irradiancia(W/m^2)---");
+          _caseTime = 0;
+          defineTime(pvcell);
           break;
-        case '2':
-          Serial.println("caso 2");
-          break;
+        // case '2':
+        //   Serial.println("---DATA - Irradiancia(W/m^2)---");
+        //   defineTime(pvcell);
+        //   break;
         case '3':
-          Serial.println("caso 3");
+          _caseTime = 1;
+          Serial.println("---HORA - Irradiancia(W/m^2)---");
+          defineTime(pvcell);
           break;
         case 'a':
-          Serial.println("caso a");
+          Serial.println("Tensao e Corrente Canal 1");
+          defineTime(ina219);
           break;
         case 'b':
-          Serial.println("caso b");
+          Serial.println("Tensao e Corrente Canal 2");
           break;
         case 'c':
-          Serial.println("caso c");
+          Serial.println("Tensao e Corrente Canal 3");
           break;
         case 'd':
           Serial.println("Deletando Dados");
@@ -432,18 +387,46 @@ void IRRADIANCE::compareCommands(){
           //showAdvancedCommands();
           break;
         default:
-          Serial.println("Digite um comando válido");
+          Serial.println("Digite um comando valido");
           break;
        }
      }
   }
   _definedTime = false;
-
 }
+
+void IRRADIANCE::defineTime(sensors sensor){
+    _definedCommands = true;
+
+    Serial.println("| Defina o intervalo de tempo (h:m:s)\n");
+    while(!_definedTime){
+        setTimeMeasure(sensor);
+    }
+}
+
+
+void IRRADIANCE::checkTimeRead(sensors sensor){
+    if(sensor == pvcell){
+        if(_timeReadIrradiance == _rtc.now().unixtime()){
+            writeIrradiance(0);
+            _reloadTimeRead();
+        }
+    }else if(sensor == ina219){
+        if(_timeReadIna == _rtc.now().unixtime()){
+            writeCurrent();
+            _reloadTimeRead();
+        }
+    }
+}
+
 
 
 void IRRADIANCE::runTimeSensor(){
   if(!_definedCommands){
     compareCommands();
   }
+  showTime();
+  checkTimeRead(pvcell);
+  checkTimeRead(ina219);
+  delay(1000);
 }

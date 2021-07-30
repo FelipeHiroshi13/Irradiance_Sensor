@@ -19,6 +19,7 @@ class IRRADIANCE{
 
         //SENSORS AND SETUP
         enum placas{monocristalina, policristalina};  
+        enum sensors{pvcell, ina219};
         void setup(uint8_t sensor);
         float getISC_AD627();
         float getIrradiance(placas pvcell);
@@ -32,23 +33,28 @@ class IRRADIANCE{
         void writeCurrentVoltage();
         void writeCurrent();
         void readSD();
-        void movePVcell();
 
         //Serial
         void runTimeSensor();
         void showCommands();
         String getValue(String data, char separator, int index);
-        void setTimeMeasure();
+        void setTimeMeasure(sensors sensor);
         void compareCommands();
-
-       
-
+        void defineTime(sensors sensor);
+        void checkTimeRead(sensors sensor);
+        void showTime();
 
 
     private:
+        //_sensor porta analogica
         uint8_t _sensor;
-        uint32_t _timeRead;
+        uint8_t _caseTime;
+        uint32_t _timeReadIrradiance;
+        uint32_t _timeReadIna;
 
+        uint8_t _hourSensor;
+        uint8_t _minuteSensor;
+        uint8_t _secondSensor;
 
         const int _G_STC = 1000;
         const float _TEMPERATURE_STC = 25;
@@ -57,16 +63,10 @@ class IRRADIANCE{
         const float _U_STC = 0.0000189;
 
         const float _I_SC_STC_POLI = 0.03;
+        char _filename[20];
 
-        int _topleft;
-        int _topright;
-        int _downleft;
-        int _downright;
-        int _waittime = 2;
-        
         bool _definedCommands;
         bool _definedTime;
-
       
         File _irradianceFile;
         File _currentFile;
@@ -78,8 +78,9 @@ class IRRADIANCE{
         void _setupSD();
         void _setupRTC();
         void _setupINA219();
-        void _setupPVCELL();
       
+        void _formatTime(sensors sensor, File file);
+        void _reloadTimeRead();
         void _textIrradiance(File file, placas pvcell);
 };
 
