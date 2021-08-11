@@ -7,6 +7,7 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <Adafruit_INA219.h>
+#include <String.h>
 
 
 
@@ -24,7 +25,6 @@ class IRRADIANCE{
         float getISC_AD627();
         float getIrradiance(placas pvcell);
         float getINA219current();
-        void getTimeTemperature();
         int getRTCseconds();
         bool isTimeRead();
         
@@ -34,24 +34,22 @@ class IRRADIANCE{
         void writeCurrent();
         void readSD();
 
+        void readSetup(char input[]);
+
         //Serial
         void runTimeSensor();
         void showCommands();
         String getValue(String data, char separator, int index);
-        void setTimeMeasure(sensors sensor);
+        void setTimeMeasure(String timeRead);
         void compareCommands();
         void defineTime(sensors sensor);
         void checkTimeRead(sensors sensor);
         void showTime();
 
-
     private:
         //_sensor porta analogica
         uint8_t _sensor;
         uint8_t _caseTime;
-        uint32_t _timeReadIrradiance;
-        uint32_t _timeReadIna;
-
         uint8_t _hourSensor;
         uint8_t _minuteSensor;
         uint8_t _secondSensor;
@@ -67,9 +65,21 @@ class IRRADIANCE{
 
         bool _definedCommands;
         bool _definedTime;
+
+        uint32_t _timeMeasured;
+        bool _isMonitor;
+        bool _isRealTime;
+        uint8_t _numberChanels;
+        bool _isConfigured;
+
+        void _readTime();
+        void _setMonitor();
+        void _setRealTime();
+        void _setNumberChannels();
       
         File _irradianceFile;
         File _currentFile;
+        File _configureFile;
         RTC_DS3231 _rtc;
         DateTime _now;
         DateTime _future;

@@ -38,28 +38,97 @@ void IRRADIANCE::_setupRTC(){
 
 }
 
-
 void IRRADIANCE::_setupSD(){
-    //TODO nome arquivo com data
-    sprintf(_filename, "%02d%02d%02dPvcell.txt", _rtc.now().day(),_rtc.now().month(), _rtc.now().year());
 
-    Serial.print(_filename);
+    //TODO nome arquivo com data
+    //sprintf(_filename, "%02d%02d%02d.txt", _rtc.now().day(),_rtc.now().month(), _rtc.now().year());
+
+    //Serial.print(_filename);
 
     if (!SD.begin(4)) {
         Serial.println("initialization failed!");
         while (1);
     }
-    Serial.println("initialization done.");
+    //Serial.println("initialization done.");
+    //Serial.println("")
 
-    _irradianceFile = SD.open("felipe.txt", FILE_WRITE);
+    _irradianceFile = SD.open("teste.txt");
+    _configureFile = SD.open("con.txt");
+    
 
+    if(_configureFile){
+      _isConfigured = true;
+      _readTime();
+      _setMonitor();
+      _setRealTime();
+      _setNumberChannels();
+    }else{
+       Serial.println("No Configure.txt");
+      _isConfigured = false;
+    }
+  
     // if the file opened okay, write to it:
-    if (!_irradianceFile) {
+    /*if (!_irradianceFile) {
         Serial.println("error opening irradiance.txt");
-    }  
+    } */ 
 
-    _irradianceFile.close();     
+    _irradianceFile.close();  
+    _configureFile.close();
 
+}
+
+void IRRADIANCE::readSetup(char input[]){
+  int i = 0;
+  char c;
+  //myFile = SD.open("CONFIG.txt");
+  while((c = _configureFile.read()) != '=');
+  while ((c = _configureFile.read()) != '\n') { 
+    if(c != ' ' && c != '\r'){
+      input[i] = c; 
+      i++;
+    }
+  }
+
+  input[i] = '\0'; 
+  Serial.println(input);
+}
+
+void IRRADIANCE::_readTime(){
+  char time_define[10];
+  readSetup(time_define);
+  setTimeMeasure(time_define);
+}
+
+void IRRADIANCE::_setMonitor(){
+  char isMonitorText[10];
+  readSetup(isMonitorText);
+  if(strcmp(isMonitorText, "true") == 0){
+    _isMonitor = true;
+  }
+  // if(strcmp(isMonitorText, "false") == 0){
+  //   _isMonitor = false;
+  // }else{
+  //   Serial.println("ERRO VALOR DE MONITOR INVALIDO");
+  // }
+}
+
+void IRRADIANCE::_setRealTime(){
+  char isRealTimeText[10];
+  readSetup(isRealTimeText);
+  if(strcmp(isRealTimeText, "true") == 0)
+    _isRealTime = true;
+  // } else if(strcmp(isRealTimeText, "false") == 0){
+  //   _isRealTime = false;
+  // }else{
+  //   Serial.println("ERRO VALOR DE REAL TIME INVALIDO");
+  // }
+}
+
+void IRRADIANCE::_setNumberChannels(){
+  char numberChannels[3];
+  readSetup(numberChannels);
+  _numberChanels = numberChannels[0] - '0';
+  Serial.println(_numberChanels);
 }
 
 void IRRADIANCE::_setupINA219(){
@@ -158,23 +227,14 @@ void IRRADIANCE::_textIrradiance(File file, placas pvcellMeasure){
 }
 
 void IRRADIANCE::writeCurrentVoltage(){
-    float shuntvoltage = 0;
     float busvoltage = 0;
     float current_mA = 0;
-    float loadvoltage = 0;
-    float power_mW = 0;
 
-    shuntvoltage = _ina219.getShuntVoltage_mV();
     busvoltage = _ina219.getBusVoltage_V();
     current_mA = _ina219.getCurrent_mA();
-    power_mW = _ina219.getPower_mW();
-    loadvoltage = busvoltage + (shuntvoltage / 1000);
   
     Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-    Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-    Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
     Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-    Serial.print("Power:         "); Serial.print(power_mW); Serial.println(" mW");
     Serial.println("");
 }
 
@@ -199,30 +259,6 @@ void IRRADIANCE::_formatTime(sensors sensor, File file){
         file.print(" CURRENT: ");
     }
     
-}
-
-
-void IRRADIANCE::getTimeTemperature(){
-    
-     if (_rtc.lostPower()) {
-        Serial.println("RTC lost power, let's set the time!");
-        // When time needs to be set on a new device, or after a power loss, the
-        // following line sets the RTC to the date & time this sketch was compiled
-        _rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
-        // This line sets the RTC with an explicit date & time, for example to set
-        // January 21, 2014 at 3am you would call:
-        // rtc.adjust(DateTime(2014, 1, 21, 3, 0, 0));
-    }
-    _now = _rtc.now();
-    Serial.print(_now.hour(), DEC);
-    Serial.print(':');
-    Serial.print(_now.minute(), DEC);
-    Serial.print(':');
-    Serial.print(_now.second(), DEC);
-    Serial.print(')');
-    Serial.print(" temp: ");
-    Serial.println(_rtc.getTemperature());
-
 }
 
 
@@ -279,14 +315,7 @@ String IRRADIANCE::getValue(String data, char separator, int index)
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-void IRRADIANCE::setTimeMeasure(sensors sensor){
-
-  String timeRead = "";
-  char character;
-  while(Serial.available()) {
-       character = Serial.read();
-       timeRead.concat(character);
-  }
+void IRRADIANCE::setTimeMeasure(String timeRead){
   
   if (timeRead != "" && timeRead.indexOf(":") >  0) {
     String hourSensor = getValue(timeRead,':',0);
@@ -308,21 +337,15 @@ void IRRADIANCE::setTimeMeasure(sensors sensor){
       _minuteSensor = minuteSensor.toInt();
       _secondSensor = secondSensor.toInt();
       _future = _rtc.now() + TimeSpan(0, hourSensor.toInt(), minuteSensor.toInt(),secondSensor.toInt());
-      // TODO: ANALISAR SE É VALIDO 
-    //   if(sensor == pvcell){
-    //     _timeReadIrradiance = _future.unixtime();
-    //   }else if(sensor == ina219){
-    //     _timeReadIna = _future.unixtime();
-    //   }
       _reloadTimeRead();
 
-      Serial.println(_timeReadIrradiance);
-      Serial.println(_rtc.now().unixtime());
     }else{
       Serial.println("Digite um tempo válido no formato h:m:s");
     }
   }
 }
+
+
 
 void IRRADIANCE::showTime(){
     _now = _rtc.now();
@@ -343,8 +366,7 @@ void IRRADIANCE::showTime(){
 
 void IRRADIANCE::_reloadTimeRead(){
     _future = _rtc.now() + TimeSpan(0, _hourSensor, _minuteSensor, _secondSensor);
-    _timeReadIrradiance = _future.unixtime();
-    _timeReadIna = _future.unixtime();
+    _timeMeasured= _future.unixtime();
 }
 
 void IRRADIANCE::compareCommands(){
@@ -400,19 +422,25 @@ void IRRADIANCE::defineTime(sensors sensor){
 
     Serial.println("| Defina o intervalo de tempo (h:m:s)\n");
     while(!_definedTime){
-        setTimeMeasure(sensor);
+      String timeRead = "";
+      char character;
+      while(Serial.available()) {
+        character = Serial.read();
+        timeRead.concat(character);
+      }
+      setTimeMeasure(timeRead);
     }
 }
 
 
 void IRRADIANCE::checkTimeRead(sensors sensor){
     if(sensor == pvcell){
-        if(_timeReadIrradiance == _rtc.now().unixtime()){
+        if(_timeMeasured == _rtc.now().unixtime()){
             writeIrradiance(0);
             _reloadTimeRead();
         }
     }else if(sensor == ina219){
-        if(_timeReadIna == _rtc.now().unixtime()){
+        if(_timeMeasured == _rtc.now().unixtime()){
             writeCurrent();
             _reloadTimeRead();
         }
@@ -422,10 +450,11 @@ void IRRADIANCE::checkTimeRead(sensors sensor){
 
 
 void IRRADIANCE::runTimeSensor(){
-  if(!_definedCommands){
+
+  if(!_definedCommands && !_isConfigured){
     compareCommands();
   }
-  showTime();
+  //showTime();
   checkTimeRead(pvcell);
   checkTimeRead(ina219);
   delay(1000);
