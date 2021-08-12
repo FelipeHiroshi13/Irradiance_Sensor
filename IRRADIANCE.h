@@ -7,8 +7,7 @@
 #include "Arduino.h"
 #include <Wire.h>
 #include <Adafruit_INA219.h>
-#include <String.h>
-
+#include <EEPROM.h>
 
 
 class IRRADIANCE{
@@ -34,7 +33,10 @@ class IRRADIANCE{
         void writeCurrent();
         void readSD();
 
-        void readSetup(char input[]);
+        //EEPRON
+        void EEPROMWriteInt(int address, int value);
+        int EEPROMReadInt(int address);
+        void clearEEPROM();
 
         //Serial
         void runTimeSensor();
@@ -45,14 +47,22 @@ class IRRADIANCE{
         void defineTime(sensors sensor);
         void checkTimeRead(sensors sensor);
         void showTime();
+        void showTimeConfigured();
 
     private:
         //_sensor porta analogica
         uint8_t _sensor;
         uint8_t _caseTime;
+
+        //Time Sensor to Measrured irradiance/Current/Voltage
         uint8_t _hourSensor;
         uint8_t _minuteSensor;
         uint8_t _secondSensor;
+
+        //Time ATtinny85 to ON/OFF arduino
+        uint8_t _hourATtinny;
+        uint8_t _minuteATtinny;
+        uint8_t _sencondATtinny;
 
         const int _G_STC = 1000;
         const float _TEMPERATURE_STC = 25;
@@ -70,18 +80,16 @@ class IRRADIANCE{
         bool _isMonitor;
         bool _isRealTime;
         uint8_t _numberChanels;
+        bool _isATttinny;
         bool _isConfigured;
 
-        void _readTime();
-        void _setMonitor();
-        void _setRealTime();
-        void _setNumberChannels();
-      
+        void _writeTimeEEPROM(int hour, int minute, int second, int sensor);
+        void _configureSensor();
+        void _setFlagConfigure();
+
         File _irradianceFile;
         File _currentFile;
-        File _configureFile;
         RTC_DS3231 _rtc;
-        DateTime _now;
         DateTime _future;
         Adafruit_INA219 _ina219;
         
