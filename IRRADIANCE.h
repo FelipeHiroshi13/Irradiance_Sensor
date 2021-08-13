@@ -19,7 +19,7 @@ class IRRADIANCE{
 
         //SENSORS AND SETUP
         enum placas{monocristalina, policristalina};  
-        enum sensors{pvcell, ina219};
+        enum sensors{pvcell, ina219, attiny};
         void setup(uint8_t sensor);
         float getISC_AD627();
         float getIrradiance(placas pvcell);
@@ -41,13 +41,14 @@ class IRRADIANCE{
         //Serial
         void runTimeSensor();
         void showCommands();
+        void showFileConfigured();
         String getValue(String data, char separator, int index);
-        void setTimeMeasure(String timeRead);
+        void setTimeMeasure(String timeRead, sensors sensor);
         void compareCommands();
         void defineTime(sensors sensor);
         void checkTimeRead(sensors sensor);
         void showTime();
-        void showTimeConfigured();
+        void showTimeConfigured(sensors sensor);
 
     private:
         //_sensor porta analogica
@@ -83,7 +84,7 @@ class IRRADIANCE{
         bool _isATttinny;
         bool _isConfigured;
 
-        void _writeTimeEEPROM(int hour, int minute, int second, int sensor);
+        void _writeTimeEEPROM(int hour, int minute, int second, sensors  sensor);
         void _configureSensor();
         void _setFlagConfigure();
 

@@ -10,12 +10,19 @@ void IRRADIANCE::setup(uint8_t sensor){
 
     while (!Serial) ;
 
-    showCommands();
-
     _setupRTC();
     //_setupINA219();
     _setupSD();
     _configureSensor();
+
+    if(_isMonitor){
+      showFileConfigured();
+      showCommands();
+    }else{
+      _definedCommands = true;
+      _definedTime = true;
+    }
+    
     
 }
 
@@ -64,20 +71,38 @@ void IRRADIANCE::_setupSD(){
 
 }
 
+void IRRADIANCE::showFileConfigured(){
+  Serial.println("------------Arquivo-de-Configuracao-------------------");
+  Serial.print("\tIntervalo entre medidas: ");Serial.print(_hourSensor);Serial.print(":");
+  Serial.print(_minuteSensor);Serial.print(":");Serial.println(_secondSensor);
+  Serial.print("\tReal Time: ");Serial.println(_isRealTime  ? "true" : "false");        
+  Serial.print("\tNumero de canais: ");Serial.println(_numberChanels);
+  Serial.print("\tAcionamento periodico: ");Serial.println(_isATttinny  ? "true" : "false");   
+  if(_isATttinny){
+    Serial.print("\tTempo Acionamento Periodico: ");Serial.print(_hourATtinny);Serial.print(":");
+    Serial.print(_minuteATtinny);Serial.print(":");Serial.println(_sencondATtinny);
+  }  
+  Serial.println("-------------------------------------------------------");
+  Serial.println("");
+  Serial.println("");
+  Serial.println("");
+}
+
 void IRRADIANCE::_configureSensor(){
+  EEPROM.write(8, 1);
   if(EEPROMReadInt(0) == 1234){         //FLAG EEPROM configured
     _isConfigured = true;
     _hourSensor = EEPROMReadInt(2);
     _minuteSensor = EEPROMReadInt(4);
     _secondSensor = EEPROMReadInt(6);
-    _isMonitor = EEPROMReadInt(8);
-    _isRealTime = EEPROMReadInt(9);
+    _isMonitor = EEPROM.read(8);
+    _isRealTime = EEPROM.read(9);
     _numberChanels = EEPROMReadInt(10);
-    _isATttinny = EEPROMReadInt(12);
+    _isATttinny = EEPROM.read(12);
     if(_isATttinny){
-      _hourATtinny = EEPROMReadInt(14);
-      _minuteATtinny = EEPROMReadInt(16);
-      _sencondATtinny = EEPROMReadInt(18);
+      _hourATtinny = EEPROMReadInt(13);
+      _minuteATtinny = EEPROMReadInt(15);
+      _sencondATtinny = EEPROMReadInt(16);
     }
 
   }else{
@@ -296,53 +321,60 @@ String IRRADIANCE::getValue(String data, char separator, int index)
   return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
-void IRRADIANCE::setTimeMeasure(String timeRead){
+void IRRADIANCE::setTimeMeasure(String timeRead, sensors sensor){
   if (timeRead != "" && timeRead.indexOf(":") >  0) {
-  String hourSensor = getValue(timeRead,':',0);
-  String minuteSensor = getValue(timeRead,':',1);
-  String secondSensor = getValue(timeRead,':',2);
-  if((hourSensor.toInt() + minuteSensor.toInt() + secondSensor.toInt()) > 0){
-    _definedTime = true;
-    Serial.println("definido com sucesso \n");
-    _definedCommands =  false;
-    _hourSensor = hourSensor.toInt();
-    _minuteSensor = minuteSensor.toInt();
-    _secondSensor = secondSensor.toInt();
-    showTimeConfigured();
-    _future = _rtc.now() + TimeSpan(0, hourSensor.toInt(), minuteSensor.toInt(),secondSensor.toInt());
-    _reloadTimeRead();
-    _writeTimeEEPROM(_hourSensor, _minuteSensor, _secondSensor, 0);
-    _setFlagConfigure();
-  }else{
-    Serial.println("Digite um tempo válido no formato h:m:s");
-  }
+    String hourSensor = getValue(timeRead,':',0);
+    String minuteSensor = getValue(timeRead,':',1);
+    String secondSensor = getValue(timeRead,':',2);
+    if((hourSensor.toInt() + minuteSensor.toInt() + secondSensor.toInt()) > 0){
+      _definedTime = true;
+      Serial.println("definido com sucesso \n");
+      _definedCommands =  false;
+      if(sensor == pvcell){
+        _hourSensor = hourSensor.toInt();
+        _minuteSensor = minuteSensor.toInt();
+        _secondSensor = secondSensor.toInt();
+        showTimeConfigured(pvcell);
+        _writeTimeEEPROM(_hourSensor, _minuteSensor, _secondSensor, sensor);
+      }else if(sensor == attiny){
+        _hourATtinny = hourSensor.toInt();
+        _minuteATtinny = minuteSensor.toInt();
+        _sencondATtinny = secondSensor.toInt();
+        _writeTimeEEPROM(_hourSensor, _minuteSensor, _secondSensor, sensor);
+        EEPROM.write(12, 1);
+      }
+      _future = _rtc.now() + TimeSpan(0, hourSensor.toInt(), minuteSensor.toInt(),secondSensor.toInt());
+      _reloadTimeRead();
+      _writeTimeEEPROM(_hourSensor, _minuteSensor, _secondSensor, 0);
+      _setFlagConfigure();
+    }else{
+      Serial.println("Digite um tempo válido no formato h:m:s");
+    }
+
   }
 }
 
-void IRRADIANCE::showTimeConfigured(){
+void IRRADIANCE::showTimeConfigured(sensors sensor){
     Serial.print("Intervalo de ");
-    Serial.print(_hourSensor);
+    Serial.print(sensor==pvcell ? _hourSensor: _hourATtinny);
     Serial.print(":");
-    Serial.print(_minuteSensor);
+    Serial.print(sensor==pvcell ? _minuteSensor: _minuteATtinny);
     if(_secondSensor > 0){
         Serial.print(":");
-        Serial.print(_secondSensor);
+        Serial.print(sensor==pvcell ? _secondSensor: _sencondATtinny);
     }
 }
 
-void IRRADIANCE::_writeTimeEEPROM(int hour, int minute, int second, int sensor){
+void IRRADIANCE::_writeTimeEEPROM(int hour, int minute, int second, sensors sensor){
   // Serial.println();
   // Serial.println("AAAAAAAAAAAAAAAAAAA");
   // Serial.println(second);
 
-  if(sensor == 0){        //Time Sensor Irradiance;
+  if(sensor == pvcell){        //Time Sensor Irradiance;
     EEPROMWriteInt(2, hour);
     EEPROMWriteInt(4, minute);
     EEPROMWriteInt(6, second);
-    Serial.println(EEPROMReadInt(2));
-    Serial.println(EEPROMReadInt(4));
-    Serial.println(EEPROMReadInt(6));
-  } else if (sensor == 1){
+  } else if (sensor == attiny){
     EEPROMWriteInt(14, hour);
     EEPROMWriteInt(16, minute);
     EEPROMWriteInt(18, second);
@@ -407,9 +439,13 @@ void IRRADIANCE::compareCommands(){
           break;
         case 'b':
           Serial.println("Tensao e Corrente Canal 2");
-          break;
+          break;   
         case 'c':
           Serial.println("Tensao e Corrente Canal 3");
+          break;
+        case 't':
+          Serial.println("Defina tempo Acionamento Periodico (h:m:s)");
+          defineTime(attiny);
           break;
         case 'd':
           Serial.println("Deletando Dados");
@@ -417,6 +453,8 @@ void IRRADIANCE::compareCommands(){
           break;
         case 's':
           Serial.println("Desativando Monitor Serial");
+          EEPROM.write(0, 8);
+          _isMonitor = false;
           //showAdvancedCommands();
           break;
         default:
@@ -429,14 +467,28 @@ void IRRADIANCE::compareCommands(){
 }
 
 void IRRADIANCE::defineTime(sensors sensor){
-    _definedCommands = true;
+    bool readChange = false;
+    bool timeConfigured = false;
     char onChangeTime;
-    if(_hourSensor != 0 || _minuteSensor != 0 || _secondSensor != 0){
+    
+    if(sensor == pvcell){
+      if(_hourSensor != 0 || _minuteSensor != 0 || _secondSensor != 0)
+        timeConfigured = true;
+    }
+    if(sensor == attiny){
+      if(_hourATtinny != 0 || _minuteATtinny != 0 || _sencondATtinny != 0)
+        timeConfigured = true;
+    }
+
+
+    if(timeConfigured){
       Serial.print("Deseja trocar o tempo definido de ");
-      showTimeConfigured();
+      showTimeConfigured(sensor);
       Serial.println(" ? [S/N]");
-      while(Serial.available()) {
+      while(!readChange) {
         onChangeTime = Serial.read();
+        if(onChangeTime == 'S' || onChangeTime == 'N')
+          readChange = true; 
       }
     }
     if(onChangeTime == 'S'){
@@ -448,33 +500,35 @@ void IRRADIANCE::defineTime(sensors sensor){
           character = Serial.read();
           timeRead.concat(character);
         }
-        setTimeMeasure(timeRead);
+        setTimeMeasure(timeRead, sensor);
       }
     }else{
       Serial.println("Tempo nao alterado");
+      return;
     }
     
 }
 
-
+//TODO VERIFICAR TEMPO INA 
 void IRRADIANCE::checkTimeRead(sensors sensor){
     if(sensor == pvcell){
         if(_timeMeasured == _rtc.now().unixtime()){
             writeIrradiance(0);
             _reloadTimeRead();
         }
-    }else if(sensor == ina219){
-        if(_timeMeasured == _rtc.now().unixtime()){
-            writeCurrent();
-            _reloadTimeRead();
-        }
     }
+    // }else if(sensor == ina219){
+    //     if(_timeMeasured == _rtc.now().unixtime()){
+    //         writeCurrent();
+    //         _reloadTimeRead();
+    //     }
+    // }
 }
 
 
 
 void IRRADIANCE::runTimeSensor(){
-  if(!_definedCommands && !(_isConfigured && _isMonitor)){ 
+  if(_isMonitor){ 
     compareCommands();
   } 
   //showTime();
