@@ -24,7 +24,6 @@ class IRRADIANCE{
         float getISC_AD627();
         float getIrradiance(placas pvcell);
         float getINA219current();
-        int getRTCseconds();
         bool isTimeRead();
         
         //Calculate Irradaiance
@@ -38,17 +37,18 @@ class IRRADIANCE{
         int EEPROMReadInt(int address);
         void clearEEPROM();
 
+        int getTimeMeasure();
+
         //Serial
         void runTimeSensor();
         void showCommands();
         void showFileConfigured();
-        String getValue(String data, char separator, int index);
-        void setTimeMeasure(String timeRead, sensors sensor);
         void compareCommands();
         void defineTime(sensors sensor);
         void checkTimeRead(sensors sensor);
         void showTime();
         void showTimeConfigured(sensors sensor);
+        void sensorPrint(bool isMonitor, String texto)
 
     private:
         //_sensor porta analogica
@@ -75,7 +75,7 @@ class IRRADIANCE{
         char _filename[20];
 
         bool _definedCommands;
-        bool _definedTime;
+        bool _showCommands;
 
         uint32_t _timeMeasured;
         bool _isMonitor;
@@ -87,6 +87,7 @@ class IRRADIANCE{
         void _writeTimeEEPROM(int hour, int minute, int second, sensors  sensor);
         void _configureSensor();
         void _setFlagConfigure();
+        void setTimeSensors(sensors sensor);
 
         File _irradianceFile;
         File _currentFile;
