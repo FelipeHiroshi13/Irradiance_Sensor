@@ -36,6 +36,7 @@ class IRRADIANCE{
         void EEPROMWriteInt(int address, int value);
         int EEPROMReadInt(int address);
         void clearEEPROM();
+        void setMonitor(bool monitor);
 
         int getTimeMeasure();
 
@@ -48,7 +49,7 @@ class IRRADIANCE{
         void checkTimeRead(sensors sensor);
         void showTime();
         void showTimeConfigured(sensors sensor);
-        void sensorPrint(bool isMonitor, String texto)
+        void changeConfig();
 
     private:
         //_sensor porta analogica
@@ -66,16 +67,14 @@ class IRRADIANCE{
         uint8_t _sencondATtinny;
 
         const int _G_STC = 1000;
-        const float _TEMPERATURE_STC = 25;
+        const int _TEMPERATURE_STC = 25;
 
         const float _I_SC_STC_MONO = 0.034977;
         const float _U_STC = 0.0000189;
 
         const float _I_SC_STC_POLI = 0.03;
-        char _filename[20];
 
         bool _definedCommands;
-        bool _showCommands;
 
         uint32_t _timeMeasured;
         bool _isMonitor;
@@ -89,6 +88,9 @@ class IRRADIANCE{
         void _setFlagConfigure();
         void setTimeSensors(sensors sensor);
 
+        char _yesOrNo();
+        void _finishConfigure();
+
         File _irradianceFile;
         File _currentFile;
         RTC_DS3231 _rtc;
@@ -99,7 +101,7 @@ class IRRADIANCE{
         void _setupRTC();
         void _setupINA219();
       
-        void _formatTime(sensors sensor, File file);
+        void _formatTime(File file);
         void _reloadTimeRead();
         void _textIrradiance(File file, placas pvcell);
 };
