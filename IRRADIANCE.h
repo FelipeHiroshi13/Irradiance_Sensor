@@ -17,6 +17,10 @@ class IRRADIANCE{
         float G_SENSOR;
         float temperature_RTC;
 
+        Adafruit_INA219 INA219_1  = 0x40;
+        Adafruit_INA219 INA219_2  = 0x44;
+        Adafruit_INA219 INA219_3 = 0x45;
+
         void setup();
         void compareCommands(int input);
         float getISC_AD627();
@@ -32,6 +36,10 @@ class IRRADIANCE{
         //Serial
         void runTimeSensor();
         void checkTimeRead();
+
+        void writeINA219_1(File file);
+        void writeINA219_2(File file);
+        void writeINA219_3(File file);
 
     private:
         //_sensor porta analogica
@@ -61,7 +69,6 @@ class IRRADIANCE{
         File _configFile;
         RTC_DS3231 _rtc;
         DateTime _future;
-        Adafruit_INA219 _ina219;
         
         void _setupSD();
         void _setupRTC();
