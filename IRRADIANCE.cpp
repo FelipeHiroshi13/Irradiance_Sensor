@@ -9,11 +9,22 @@ void IRRADIANCE::setup(){
   _setupSD();
   _setupINA219();
 
-  //EEPROM.write(12, 0);
+  fileConfigure();
+
   _configureSensor();
-  if(!_isATtinny){
-    _isConfigured = false;
-    compareCommands();
+  if(!_isConfigured){
+    compareCommands(1);
+  }
+  if(_isConfigured){
+    _setFlagConfigure();
+  }
+}
+
+void IRRADIANCE::fileConfigure(){
+  if(SD.exists("config.txt")){
+    _configFile = SD.open("config.txt");
+    compareCommands(0);
+    _configFile.close();
   }
   if(_isConfigured){
     _setFlagConfigure();
@@ -81,21 +92,20 @@ void IRRADIANCE::EEPROMWriteInt(int address, int value) {
    EEPROM.write(address + 1, loByte);   
 } 
 
-void IRRADIANCE::compareCommands(){
-  Serial.println("command");
+void IRRADIANCE::compareCommands(int input){
   while(!_isConfigured){
-    switch (readCommand()){
+    char command = input == 0 ? _readFile() : readCommand();
+    switch (command){
     case 'p':
       EEPROM.write(5, 1);
       _isATtinny = true;
-      _setTime();
+      _setTime(input);
       break;
     case 'a':
-      _setNumberChannels();
+      _setNumberChannels(input);
       break;
-    
     case 'd':
-      _deleteFile();
+      _deleteFile(input);
       break;
     
     default:
@@ -115,9 +125,9 @@ char IRRADIANCE::readCommand(){
   }
 }
 
-void IRRADIANCE::_setTime(){
-  int time = readCommand() - '0';
-  char typeTime = readCommand();
+void IRRADIANCE::_setTime(int input){
+  int time = (input == 0 ? _readFile() : readCommand()) - '0';
+  char typeTime =  input == 0 ? _readFile() : readCommand();
   switch (typeTime){
     case 's':
       EEPROM.write(4, typeTime);
@@ -139,15 +149,14 @@ void IRRADIANCE::_setTime(){
   _isConfigured = true;
 }
 
-void IRRADIANCE::_setNumberChannels(){
-  int number = readCommand() - '0';
-  Serial.println(number);
+void IRRADIANCE::_setNumberChannels(int input){
+  int number = (input == 0 ? _readFile() : readCommand()) - '0';
   EEPROMWriteInt(6, number); 
   _isConfigured = true;
 }
 
-void IRRADIANCE::_deleteFile(){
-  char typeFile = readCommand();
+void IRRADIANCE::_deleteFile(int input){
+  char typeFile = input == 0 ? _readFile() : readCommand();
   if(typeFile == 'p'){
     Serial.println("dados");
     SD.remove("dados.csv"); 
@@ -155,6 +164,19 @@ void IRRADIANCE::_deleteFile(){
     Serial.println("realTime");
     SD.remove("realTime.csv");
   }
+}
+
+char IRRADIANCE::_readFile(){
+  if(_configFile){
+    while(true){
+      char command = _configFile.read();
+      if(command != '\n' && command != '\r' && command != ' ')
+        return command;
+    }
+  }else{
+    Serial.println("erro config.file");
+  }
+  return '\0';
 }
 
 void IRRADIANCE::_writeFile(){

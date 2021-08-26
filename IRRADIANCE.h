@@ -18,8 +18,9 @@ class IRRADIANCE{
         float temperature_RTC;
 
         void setup();
-        void compareCommands();
+        void compareCommands(int input);
         float getISC_AD627();
+        void fileConfigure();
 
         //EEPRON
         void EEPROMWriteInt(int address, int value);
@@ -57,6 +58,7 @@ class IRRADIANCE{
         String _filename; 
 
         File _file;
+        File _configFile;
         RTC_DS3231 _rtc;
         DateTime _future;
         Adafruit_INA219 _ina219;
@@ -68,11 +70,12 @@ class IRRADIANCE{
         void _formatTime(File file);
         void _reloadTimeRead();
 
-        void _setTime();
-        void _deleteFile();
-        void _setNumberChannels();
+        void _setTime(int input);
+        void _deleteFile(int input);
+        void _setNumberChannels(int input);
 
         void _writeFile();
+        char _readFile();
 };
 
 
