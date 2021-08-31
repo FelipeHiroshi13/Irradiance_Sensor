@@ -36,10 +36,13 @@ class IRRADIANCE{
         //Serial
         void runTimeSensor();
         void checkTimeRead();
+        void speedMode();
 
         void writeINA219_1(File file);
         void writeINA219_2(File file);
         void writeINA219_3(File file);
+
+        float getIrradiance();
 
     private:
         //_sensor porta analogica
@@ -83,6 +86,7 @@ class IRRADIANCE{
 
         void _writeFile();
         char _readFile();
+        void _headerFile();
 };
 
 

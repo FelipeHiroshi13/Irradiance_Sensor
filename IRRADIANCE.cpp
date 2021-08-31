@@ -206,8 +206,7 @@ char IRRADIANCE::_readFile(){
   return '\0';
 }
 
-void IRRADIANCE::_writeFile(){
-  _filename = _isATtinny ?  "dados.CSV" : "realTime.CSV";
+void IRRADIANCE::_headerFile(){
   if(!SD.exists(_filename)){
     _file = SD.open(_filename, FILE_WRITE);
     if(_file){
@@ -218,10 +217,15 @@ void IRRADIANCE::_writeFile(){
       Serial.println("Erro Header");
     }
   }
+}
+
+void IRRADIANCE::_writeFile(){
+  _filename = _isATtinny ?  "dados.CSV" : "realTime.CSV";
+  
   _file = SD.open(_filename, FILE_WRITE);
   if(_file){
     _formatTime(_file);
-    //IRRADIANCE
+    _file.print(getIrradiance());
     _file.print(',');
     writeINA219_1(_file);
     writeINA219_2(_file);
@@ -271,9 +275,67 @@ void IRRADIANCE::checkTimeRead(){
   }
 }
 
+float IRRADIANCE::getISC_AD627(){
+    float V_OC;
+
+    V_OC = (float(analogRead(_sensor))/ float(1023))*3.3;;
+    return(V_OC/float(470))/float(0.1);
+}
+
+
+float IRRADIANCE::getIrradiance(){
+  I_SC = getISC_AD627();
+  temperature_RTC = _rtc.getTemperature();;
+  return(I_SC * _G_STC) / (_I_SC_STC_MONO + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
+}
+
+//TOOD TAXA DE AMOSTRAGEM
+void IRRADIANCE::speedMode(){
+  while(true){
+    _filename = "realTime.CSV";
+    _headerFile();
+    _file = SD.open(_filename, FILE_WRITE);
+    if(_file){ 
+      _formatTime(_file);
+      _file.print(',');
+    if(_numberChanels ==  1){
+      writeINA219_1(_file);
+      _file.println(',');
+    }else if(_numberChanels ==  2){
+      writeINA219_1(_file);
+      writeINA219_2(_file);
+      _file.println(',');
+    }else{
+      writeINA219_1(_file);
+      writeINA219_2(_file);
+      writeINA219_3(_file);
+    }
+    _file.close();
+    }else{
+      Serial.println("open file");
+    }
+    if (Serial.available() > 0) {
+      char command = Serial.read();
+      if(command == 's'){
+        _isConfigured = false;
+        break;
+      }
+    }
+  }
+  Serial.println("Alta Velocidade destivada");
+}
+
 void IRRADIANCE::runTimeSensor(){
-  checkTimeRead();
-  delay(1000);
+  if(!_isConfigured){
+    compareCommands(1);
+  }
+  if(_isATtinny){
+    checkTimeRead();
+    delay(1000);
+  }else{
+    Serial.println("Alta velocidade ativada");
+    speedMode();
+  }
 }
 
 // P 3M 
