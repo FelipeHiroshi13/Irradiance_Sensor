@@ -64,7 +64,10 @@ void IRRADIANCE::_setupINA219(){
     Serial.println("Failed to find INA219_3 chip");
     while (1) { delay(10); }
   }
-  Serial.println("INA219");
+  INA219_1.setCalibration_16V_400mA();
+  INA219_2.setCalibration_16V_400mA();
+  INA219_3.setCalibration_16V_400mA();
+  Serial.println("IRRADIANCE SENSOR");
 }
 
 void IRRADIANCE::writeINA219_1(File file){
@@ -179,16 +182,17 @@ void IRRADIANCE::_setTime(int input){
 void IRRADIANCE::_setNumberChannels(int input){
   int number = (input == 0 ? _readFile() : readCommand()) - '0';
   EEPROMWriteInt(6, number); 
+  _numberChanels = number;
   _isConfigured = true;
 }
 
 void IRRADIANCE::_deleteFile(int input){
   char typeFile = input == 0 ? _readFile() : readCommand();
   if(typeFile == 'p'){
-    Serial.println("dados");
+    Serial.println("dados.csv deletado");
     SD.remove("dados.csv"); 
   }else if(typeFile == 'a'){
-    Serial.println("realTime");
+    Serial.println("realtime.csv deletado");
     SD.remove("realTime.csv");
   }
 }
@@ -201,7 +205,7 @@ char IRRADIANCE::_readFile(){
         return command;
     }
   }else{
-    Serial.println("erro config.file");
+    Serial.println("erro config.txt");
   }
   return '\0';
 }
@@ -210,18 +214,28 @@ void IRRADIANCE::_headerFile(){
   if(!SD.exists(_filename)){
     _file = SD.open(_filename, FILE_WRITE);
     if(_file){
-      Serial.println("header");
-      _file.println("Data, Hora, Irradiancia, Corrente1, Tensao1, Corrente2, Tensao2, Corrente3, Tensao3");
+      _file.print("Data, Hora, Irradiancia, Corrente1, Tensao1, Corrente2, Tensao2, Corrente3, Tensao3");
+      if(_filename == "realTime.CSV"){
+        if(_numberChanels == 1){
+          _file.println(", 49 Hz");
+        }else if(_numberChanels ==2){
+          _file.println("45 Hz");
+        }else{
+          _file.println("39 Hz");
+        }
+      }else{
+        _file.println(" ");
+      }
       _file.close();
     }else{
-      Serial.println("Erro Header");
+      Serial.println("Erro abrir arquivo");
     }
   }
 }
 
 void IRRADIANCE::_writeFile(){
   _filename = _isATtinny ?  "dados.CSV" : "realTime.CSV";
-  
+  _headerFile();
   _file = SD.open(_filename, FILE_WRITE);
   if(_file){
     _formatTime(_file);
@@ -231,9 +245,9 @@ void IRRADIANCE::_writeFile(){
     writeINA219_2(_file);
     writeINA219_3(_file);
     _file.close();
-    Serial.println("entrei");
+    Serial.println("dados gravados");
   }else{
-    Serial.println("open file");
+    Serial.println("Erro abrir arquivo");
   }
 }
 
@@ -289,12 +303,11 @@ float IRRADIANCE::getIrradiance(){
   return(I_SC * _G_STC) / (_I_SC_STC_MONO + _U_STC*(temperature_RTC - _TEMPERATURE_STC)); 
 }
 
-//TOOD TAXA DE AMOSTRAGEM
 void IRRADIANCE::speedMode(){
   while(true){
-    _filename = "realTime.CSV";
-    _headerFile();
-    _file = SD.open(_filename, FILE_WRITE);
+  _filename = "realTime.CSV";
+  _headerFile();
+  _file = SD.open(_filename, FILE_WRITE);
     if(_file){ 
       _formatTime(_file);
       _file.print(',');
@@ -312,7 +325,7 @@ void IRRADIANCE::speedMode(){
     }
     _file.close();
     }else{
-      Serial.println("open file");
+      Serial.println("Erro abrir arquivo");
     }
     if (Serial.available() > 0) {
       char command = Serial.read();
@@ -322,7 +335,7 @@ void IRRADIANCE::speedMode(){
       }
     }
   }
-  Serial.println("Alta Velocidade destivada");
+  Serial.println("Alta Velocidade desativada");
 }
 
 void IRRADIANCE::runTimeSensor(){
@@ -333,8 +346,17 @@ void IRRADIANCE::runTimeSensor(){
     checkTimeRead();
     delay(1000);
   }else{
-    Serial.println("Alta velocidade ativada");
-    speedMode();
+    Serial.print("Alta velocidade com "); Serial.print(_numberChanels); Serial.println(" canais"); 
+    while(true){
+      if (Serial.available() > 0) {
+        char command = Serial.read();
+        if(command == 's'){
+          Serial.println("Alta Velocidade ativada");
+          speedMode();
+          break;
+        }
+      }
+    }
   }
 }
 
