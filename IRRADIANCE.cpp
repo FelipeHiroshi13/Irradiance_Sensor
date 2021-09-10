@@ -217,11 +217,11 @@ void IRRADIANCE::_headerFile(){
       _file.print("Data, Hora, Irradiancia, Corrente1, Tensao1, Corrente2, Tensao2, Corrente3, Tensao3");
       if(_filename == "realTime.CSV"){
         if(_numberChanels == 1){
-          _file.println(", 49 Hz");
+          _file.println(", 300 Hz");
         }else if(_numberChanels ==2){
-          _file.println("45 Hz");
+          _file.println("200 Hz");
         }else{
-          _file.println("39 Hz");
+          _file.println("100 Hz");
         }
       }else{
         _file.println(" ");
@@ -309,7 +309,8 @@ void IRRADIANCE::speedMode(){
   _headerFile();
   _file = SD.open(_filename, FILE_WRITE);
     if(_file){ 
-      _formatTime(_file);
+      _file.print(',');
+      _file.print(',');
       _file.print(',');
     if(_numberChanels ==  1){
       writeINA219_1(_file);
