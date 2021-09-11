@@ -217,11 +217,11 @@ void IRRADIANCE::_headerFile(){
       _file.print("Data, Hora, Irradiancia, Corrente1, Tensao1, Corrente2, Tensao2, Corrente3, Tensao3");
       if(_filename == "realTime.CSV"){
         if(_numberChanels == 1){
-          _file.println(", 300 Hz");
+          _file.println(",300 Hz");
         }else if(_numberChanels ==2){
-          _file.println("200 Hz");
+          _file.println(",200 Hz");
         }else{
-          _file.println("100 Hz");
+          _file.println(",100 Hz");
         }
       }else{
         _file.println(" ");
