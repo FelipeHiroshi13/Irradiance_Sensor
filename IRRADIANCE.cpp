@@ -1,11 +1,15 @@
 #include "IRRADIANCE.h"
 
+
+SoftwareSerial swsri(8,9);
+
 void IRRADIANCE::setup(){
   Serial.begin(9600);
+  swsri.begin(9600);
 
   while (!Serial) ;
-
   _setupRTC();
+  Serial.println("oioi");
   _setupSD();
   _setupINA219();
 
@@ -161,22 +165,35 @@ void IRRADIANCE::_setTime(int input){
   switch (typeTime){
     case 's':
       EEPROM.write(4, typeTime);
-      _typeTime = 's';
+      _typeTime = ':';
       break;
     case 'm':
       EEPROM.write(4, typeTime);
-      _typeTime = 'm';
+      _typeTime = ';';
       break;
     case 'h':
       EEPROM.write(4, typeTime);
-      _typeTime = 'h';
+      _typeTime = '<';
       break;
     default:
       break;
   }
   _numberTime = time;
+  _sendTimeATtiny85();
   EEPROMWriteInt(2, time); 
   _isConfigured = true;
+}
+
+void IRRADIANCE::_sendTimeATtiny85(){
+  while(swsri.read() != '0'){
+    swsri.println(_typeTime);
+    if(_numberTime > 9){
+      swsri.println(_numberTime/10);
+      swsri.println(_numberTime%10);
+    }else{
+      swsri.println(_numberTime);
+    }
+  }
 }
 
 void IRRADIANCE::_setNumberChannels(int input){
@@ -246,6 +263,7 @@ void IRRADIANCE::_writeFile(){
     writeINA219_3(_file);
     _file.close();
     Serial.println("dados gravados");
+    swsri.println(1);
   }else{
     Serial.println("Erro abrir arquivo");
   }
@@ -272,15 +290,15 @@ void IRRADIANCE::checkTimeRead(){
   DateTime now;
   now = _rtc.now();
   switch (_typeTime){
-  case 's':
+  case ':':
     if(now.second()%_numberTime == 0)
       _writeFile();
     break;
-  case 'm':
+  case ';':
     if(now.second()%_numberTime == 0)
       _writeFile();
     break;
-  case 'h':
+  case '<':
     if(now.second()%_numberTime == 0)
       _writeFile();
     break;

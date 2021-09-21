@@ -8,6 +8,7 @@
 #include <Wire.h>
 #include <Adafruit_INA219.h>
 #include <EEPROM.h>
+#include<SoftwareSerial.h>
 
 
 class IRRADIANCE{
@@ -76,6 +77,8 @@ class IRRADIANCE{
         void _setupSD();
         void _setupRTC();
         void _setupINA219();
+
+        void _sendTimeATtiny85();
       
         void _formatTime(File file);
         void _reloadTimeRead();
