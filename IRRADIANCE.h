@@ -18,6 +18,9 @@ class IRRADIANCE{
         float G_SENSOR;
         float temperature_RTC;
 
+        bool isTimeset = false;
+        char timeTimeRead;
+
         Adafruit_INA219 INA219_1  = 0x40;
         Adafruit_INA219 INA219_2  = 0x44;
         Adafruit_INA219 INA219_3 = 0x45;
@@ -44,6 +47,7 @@ class IRRADIANCE{
         void writeINA219_3(File file);
 
         float getIrradiance();
+        int timeRead();
 
     private:
         //_sensor porta analogica

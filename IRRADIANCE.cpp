@@ -4,16 +4,16 @@
 SoftwareSerial swsri(8,9);
 
 void IRRADIANCE::setup(){
-  Serial.begin(9600);
+  Serial.begin(19200);
   swsri.begin(9600);
 
   while (!Serial) ;
-  _setupRTC();
+  //_setupRTC();
   Serial.println("oioi");
-  _setupSD();
-  _setupINA219();
+  //_setupSD();
+  //_setupINA219();
 
-  fileConfigure();
+  //fileConfigure();
 
   _configureSensor();
   if(!_isConfigured){
@@ -159,41 +159,75 @@ char IRRADIANCE::readCommand(){
   }
 }
 
+int IRRADIANCE::timeRead(){
+  int number;
+  while (Serial.available () > 0){
+    static char input[5];
+    static uint8_t i;
+    char c = Serial.read ();
+    if(c == 's' || c == 'm' || c == 'h'){
+      timeTimeRead = c;
+      Serial.println(timeTimeRead);
+    }
+    if ( c != '\r' && i < 15 && c > 47 && c < 58){
+      input[i++] = c;
+    }else{
+      input[i] = '\0';
+      i = 0;
+       number = atoi( input );
+      if(number != 0){
+        Serial.println(number);
+        return number;;
+      }
+    }
+  }
+  return number;
+}
+
 void IRRADIANCE::_setTime(int input){
-  int time = (input == 0 ? _readFile() : readCommand()) - '0';
-  char typeTime =  input == 0 ? _readFile() : readCommand();
-  switch (typeTime){
+  int time = timeRead();
+  Serial.println("entrei");
+  //char typeTime =  input == 0 ? _readFile() : readCommand();
+  switch (timeTimeRead){
     case 's':
-      EEPROM.write(4, typeTime);
+      EEPROM.write(4, timeTimeRead);
       _typeTime = ':';
       break;
     case 'm':
-      EEPROM.write(4, typeTime);
+      EEPROM.write(4, timeTimeRead);
       _typeTime = ';';
       break;
     case 'h':
-      EEPROM.write(4, typeTime);
+      EEPROM.write(4, timeTimeRead);
       _typeTime = '<';
       break;
     default:
       break;
   }
   _numberTime = time;
+  isTimeset= false;
   _sendTimeATtiny85();
   EEPROMWriteInt(2, time); 
   _isConfigured = true;
 }
 
 void IRRADIANCE::_sendTimeATtiny85(){
-  while(swsri.read() != '0'){
+  Serial.println(isTimeset);
+  while(!isTimeset){
     swsri.println(_typeTime);
+    delay(500);
     if(_numberTime > 9){
-      swsri.println(_numberTime/10);
+      swsri.print(_numberTime/10);
       swsri.println(_numberTime%10);
     }else{
       swsri.println(_numberTime);
-    }
+    }   
+    char c = swsri.read();
+    if(c == '1')
+      isTimeset = true;
+    Serial.println('0');
   }
+  Serial.println('1');
 }
 
 void IRRADIANCE::_setNumberChannels(int input){
@@ -383,3 +417,5 @@ void IRRADIANCE::runTimeSensor(){
 // A 3
 // D P
 // D A
+
+//INTERRUÇÃO PARA LER
