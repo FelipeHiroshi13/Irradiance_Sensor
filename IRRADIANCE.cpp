@@ -15,14 +15,11 @@ void IRRADIANCE::setup(){
   fileConfigure();
 
   _configureSensor();
-  if(!_isConfigured){
-    compareCommands(1);
-  }
   if(_isConfigured){
     _setFlagConfigure();
   }
   digitalWrite(13, HIGH);
-  delay(1500);
+  delay(1000);
   digitalWrite(13, LOW);
 }
 
@@ -73,7 +70,7 @@ void IRRADIANCE::_setupINA219(){
   INA219_1.setCalibration_16V_400mA();
   INA219_2.setCalibration_16V_400mA();
   INA219_3.setCalibration_16V_400mA();
-  Serial.println("IRRADIANCE SENSOR");
+  Serial.println("SENSOR INCIALIZADO");
 }
 
 void IRRADIANCE::writeINA219_1(File file){
@@ -97,7 +94,7 @@ void IRRADIANCE::writeINA219_3(File file){
 }
 
 void IRRADIANCE::_configureSensor(){
-  if(EEPROMReadInt(0) == 1234){         //FLAG EEPROM configured
+  if(EEPROMReadInt(0) == 1234){     
     _isConfigured = true;
     _numberTime = EEPROMReadInt(2);
     _typeTime =  EEPROM.read(4);
@@ -108,7 +105,7 @@ void IRRADIANCE::_configureSensor(){
     Serial.println(_isATtinny);
     Serial.println(_numberChanels);
   }else{
-      _isConfigured =false;
+    _isConfigured =false;
   }
 }
 
@@ -142,7 +139,7 @@ void IRRADIANCE::compareCommands(int input){
     _setTime(input);
     break;
   case 'a':
-    Serial.println("alta velocidade");
+    Serial.println("Alta velocidade");
     EEPROM.write(5, 0);
     _isATtinny = false;
     _setNumberChannels(input);
@@ -156,7 +153,6 @@ void IRRADIANCE::compareCommands(int input){
   default:
     break;
   }
-  Serial.println("oioioio");
 }
 
 char IRRADIANCE::readCommand(){
@@ -200,8 +196,6 @@ int IRRADIANCE::timeRead(){
 
 void IRRADIANCE::_setTime(int input){
   int time = timeRead();
-  Serial.println("entrei");
-  //char typeTime =  input == 0 ? _readFile() : readCommand();
   switch (timeTimeRead){
     case 's':
       EEPROM.write(4, timeTimeRead);
@@ -227,7 +221,7 @@ void IRRADIANCE::_setTime(int input){
 }
 
 void IRRADIANCE::_sendTimeATtiny85(){
-  Serial.println(isTimeset);
+  Serial.println("Enviando tempo para ATtiny");
   while(!isTimeset){
     Serial.println(_typeTime);
     delay(500);
@@ -242,9 +236,8 @@ void IRRADIANCE::_sendTimeATtiny85(){
     char c = swsri.read();
     if(c == '1')
       isTimeset = true;
-    Serial.println('0');
   }
-  Serial.println('1');
+  Serial.println('Tempo Enviado');
 }
 
 void IRRADIANCE::_setNumberChannels(int input){
@@ -413,7 +406,7 @@ void IRRADIANCE::speedMode(){
 
 void IRRADIANCE::runTimeSensor(){
   if(firsTimeRead){
-    Serial.println("first time");
+    Serial.println("Gravando dados...");
     _writeFile();
     firsTimeRead = false;
   }
