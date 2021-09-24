@@ -1,19 +1,18 @@
 #include "IRRADIANCE.h"
 
-
 SoftwareSerial swsri(8,9);
 
 void IRRADIANCE::setup(){
   Serial.begin(19200);
   swsri.begin(9600);
 
-  while (!Serial) ;
-  //_setupRTC();
-  Serial.println("oioi");
-  //_setupSD();
-  //_setupINA219();
+  pinMode(13, OUTPUT);
 
-  //fileConfigure();
+  _setupRTC();
+  _setupSD();
+  _setupINA219();
+
+  fileConfigure();
 
   _configureSensor();
   if(!_isConfigured){
@@ -22,6 +21,9 @@ void IRRADIANCE::setup(){
   if(_isConfigured){
     _setFlagConfigure();
   }
+  digitalWrite(13, HIGH);
+  delay(1500);
+  digitalWrite(13, LOW);
 }
 
 void IRRADIANCE::fileConfigure(){
@@ -101,6 +103,10 @@ void IRRADIANCE::_configureSensor(){
     _typeTime =  EEPROM.read(4);
     _isATtinny = EEPROM.read(5);
     _numberChanels = EEPROMReadInt(6);
+    Serial.println(_numberTime);
+    Serial.println(_typeTime);
+    Serial.println(_isATtinny);
+    Serial.println(_numberChanels);
   }else{
       _isConfigured =false;
   }
@@ -127,34 +133,42 @@ void IRRADIANCE::EEPROMWriteInt(int address, int value) {
 } 
 
 void IRRADIANCE::compareCommands(int input){
-  while(!_isConfigured){
-    char command = input == 0 ? _readFile() : readCommand();
-    switch (command){
-    case 'p':
-      EEPROM.write(5, 1);
-      _isATtinny = true;
-      _setTime(input);
-      break;
-    case 'a':
-      _setNumberChannels(input);
-      break;
-    case 'd':
-      _deleteFile(input);
-      break;
-    
-    default:
-      break;
-    }
+  char command = input == 0 ? _readFile() : readCommand();
+  Serial.println(command);
+  switch (command){
+  case 'p':
+    EEPROM.write(5, 1);
+    _isATtinny = true;
+    _setTime(input);
+    break;
+  case 'a':
+    Serial.println("alta velocidade");
+    EEPROM.write(5, 0);
+    _isATtinny = false;
+    _setNumberChannels(input);
+    break;
+  case 'd':
+    _deleteFile(input);
+    break;
+  case '0':
+    return;
+    break;
+  default:
+    break;
   }
+  Serial.println("oioioio");
 }
 
 char IRRADIANCE::readCommand(){
   while(true){
     if (Serial.available() > 0) {
       char command = Serial.read();
+      Serial.println(command);
       if(command != '\n' && command != '\r' && command != ' '){
         return command;
       }
+    }else{
+      return '/0';
     }
   }
 }
@@ -209,11 +223,14 @@ void IRRADIANCE::_setTime(int input){
   _sendTimeATtiny85();
   EEPROMWriteInt(2, time); 
   _isConfigured = true;
+  _setFlagConfigure();
 }
 
 void IRRADIANCE::_sendTimeATtiny85(){
   Serial.println(isTimeset);
   while(!isTimeset){
+    Serial.println(_typeTime);
+    delay(500);
     swsri.println(_typeTime);
     delay(500);
     if(_numberTime > 9){
@@ -235,6 +252,7 @@ void IRRADIANCE::_setNumberChannels(int input){
   EEPROMWriteInt(6, number); 
   _numberChanels = number;
   _isConfigured = true;
+  _setFlagConfigure();
 }
 
 void IRRADIANCE::_deleteFile(int input){
@@ -297,7 +315,7 @@ void IRRADIANCE::_writeFile(){
     writeINA219_3(_file);
     _file.close();
     Serial.println("dados gravados");
-    swsri.println(1);
+    swsri.println('.');
   }else{
     Serial.println("Erro abrir arquivo");
   }
@@ -389,28 +407,26 @@ void IRRADIANCE::speedMode(){
     }
   }
   Serial.println("Alta Velocidade desativada");
+  EEPROM.write(5, 1);
+  _isATtinny = true;
 }
 
 void IRRADIANCE::runTimeSensor(){
-  if(!_isConfigured){
+  if(firsTimeRead){
+    Serial.println("first time");
+    _writeFile();
+    firsTimeRead = false;
+  }
+  if (Serial.available() > 0){
     compareCommands(1);
   }
-  if(_isATtinny){
-    checkTimeRead();
-    delay(1000);
-  }else{
+  if(_numberChanels > 0){
     Serial.print("Alta velocidade com "); Serial.print(_numberChanels); Serial.println(" canais"); 
-    while(true){
-      if (Serial.available() > 0) {
-        char command = Serial.read();
-        if(command == 's'){
-          Serial.println("Alta Velocidade ativada");
-          speedMode();
-          break;
-        }
-      }
-    }
+    while(readCommand() != 's');
+    Serial.println("Speed Mode");
+    speedMode();
   }
+ 
 }
 
 // P 3M 
@@ -418,4 +434,4 @@ void IRRADIANCE::runTimeSensor(){
 // D P
 // D A
 
-//INTERRUÇÃO PARA LER
+//MEMORIA FLASH, CONFIGURAR

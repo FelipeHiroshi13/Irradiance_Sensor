@@ -19,6 +19,7 @@ class IRRADIANCE{
         float temperature_RTC;
 
         bool isTimeset = false;
+        volatile bool firsTimeRead = true;
         char timeTimeRead;
 
         Adafruit_INA219 INA219_1  = 0x40;
@@ -65,7 +66,7 @@ class IRRADIANCE{
         const float _I_SC_STC_POLI = 0.03;
 
         uint8_t _numberChanels;
-        bool _isATtinny;
+        bool _isATtinny = true;
         bool _isConfigured;
 
         void _configureSensor();

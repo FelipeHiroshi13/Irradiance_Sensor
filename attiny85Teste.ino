@@ -1,60 +1,57 @@
-#include<SoftwareSerial.h>
-#include <DS3232RTC.h>
-#include <Time.h> 
-#include <TinyWireM.h> 
-
+#include <SoftwareSerial.h>
 SoftwareSerial swsri(3,4);
+
 char c = ' ';
 bool secondsTime = false;
 bool minuteTime = false;
 bool hourTime = false;
 int timeConfigured = 0;
 
-byte led = 1;
-byte led2 = 5;
+byte arduino = 1;
+byte RX = 3;
+byte TX = 4;
 
 void setup()
 {
-  pinMode(led,OUTPUT);
-  pinMode(led2,OUTPUT);
+  pinMode(arduino,OUTPUT);
   swsri.begin(9600);
-  digitalWrite(led,HIGH);
+  digitalWrite(arduino,LOW);
+  while(!((secondsTime || minuteTime || hourTime) && timeConfigured != 0)){
+    configureTime();
+  }
+
 }
 
 void loop()
 { 
-  configureTime();
+  //turnOnArduino();
   if((secondsTime || minuteTime || hourTime) && timeConfigured != 0){
     swsri.println('1');
-    for(int i = 0; i < timeConfigured; i++){
-      digitalWrite(led,LOW);
-      delay(200);
-      digitalWrite(led,HIGH);
-      delay(200);
-    }
-    delay(1000);
   }
+  configureTime();
+  turnOffArduino();
 }
 
 //TROCAR TIPO DE TEMPO
-
 void configureTime(){
   while (swsri.available () > 0){
       static char input[5];
       static uint8_t i;
       char c = swsri.read ();
+      if(c == '.' && timeConfigured > 0){
+       turnOffArduino();
+      }
       if(c >  57 && c < 62){
+        secondsTime = false;
+        minuteTime= false;
+        hourTime = false;
+        timeConfigured = 0;
         if(c == ':'){
           secondsTime = true;
         }else if(c == ';'){
           minuteTime= true;
         }else if(c == '<'){
           hourTime = true;
-        }else if(c == '='){
-          hourTime = false;
-          minuteTime= false;
-          secondsTime = false;
-          timeConfigured = 0;
         }
       }else{
         if ( c != '\r' && i < 15 ){
@@ -64,7 +61,8 @@ void configureTime(){
           i = 0;
           int number = atoi( input );
           if(number != 0){
-            timeConfigured = number;
+            timeConfigured = convertToSeconds(number);
+            swsri.println('1');
             break;
           }
         }
@@ -72,32 +70,32 @@ void configureTime(){
     }
 }
 
-void turnOnArduino(){
-  time_t t = now();
-  bool isTurnOnArduino = false;
-  if(secondsTime && second(t)%timeConfigured == 0){
-    isTurnOnArduino= true;
-  }
-  if(minuteTime && minute(t)%timeConfigured == 0 && second(t) == 0){
-    isTurnOnArduino= true;
-  }
-  if(hourTime && hour(t)%timeConfigured == 0 && minute(t)== 0 && second(t) == 0){
-    isTurnOnArduino= true;
-  }
-  if(isTurnOnArduino){
-    digitalWrite(led,HIGH);
-    swsri.print(1);
-    turnOffArduino();
-  }
-}
-
 void turnOffArduino(){
-  while(true){
-    char c = swsri.read ();
-    if(c == '1'){
-      digitalWrite(led,LOW);
-      break;
-    }
-  }
+  digitalWrite(arduino, HIGH); 
+  digitalWrite(RX, LOW);
+  digitalWrite(TX, LOW);
+  delayLong(timeConfigured);
+  turnOnArduino();
+  delay(5000);
+  
 }
 
+void delayLong(int time){
+  for(int i = 0; i < time; i++){
+    delay(1000);
+  }
+}
+void turnOnArduino(){
+  digitalWrite(arduino, LOW);
+  digitalWrite(RX, HIGH);
+  digitalWrite(TX, HIGH);
+}
+
+int convertToSeconds(int number){
+  if(minuteTime){
+    number =  number * 60;
+  }else if(hourTime){
+    number = number *3600;
+  }
+  return number;
+}
