@@ -8,6 +8,10 @@ void IRRADIANCE::setup(){
 
   pinMode(13, OUTPUT);
 
+  
+  // if (analogRead (A1) > 900 && analogRead (A1) < 1000)
+  //  while (!Serial) ;
+  delay(500);
   _setupRTC();
   _setupSD();
   _setupINA219();
@@ -15,6 +19,8 @@ void IRRADIANCE::setup(){
   fileConfigure();
 
   _configureSensor();
+
+  _isConfigured = false;
   if(_isConfigured){
     _setFlagConfigure();
   }
@@ -37,8 +43,8 @@ void IRRADIANCE::fileConfigure(){
 void IRRADIANCE::_setupRTC(){
     if (! _rtc.begin()) {
         Serial.println("Couldn't find RTC");
-        Serial.flush();
-        abort();
+        //Serial.flush();
+        //abort();
     }
 
     if (_rtc.lostPower()) {
@@ -106,6 +112,10 @@ void IRRADIANCE::_configureSensor(){
     Serial.println(_numberChanels);
   }else{
     _isConfigured =false;
+  }
+  if(_numberTime > 0){
+    Serial.println("Enviando dados na flash");
+    _sendTimeATtiny85();
   }
 }
 
@@ -326,27 +336,6 @@ void IRRADIANCE::_formatTime(File file){
     file.print(',');
 }
 
-void IRRADIANCE::checkTimeRead(){
-  DateTime now;
-  now = _rtc.now();
-  switch (_typeTime){
-  case ':':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  case ';':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  case '<':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  default:
-    break;
-  }
-}
-
 float IRRADIANCE::getISC_AD627(){
     float V_OC;
 
@@ -414,7 +403,6 @@ void IRRADIANCE::runTimeSensor(){
     Serial.println("Speed Mode");
     speedMode();
   }
- 
 }
 
 // P 3M 
