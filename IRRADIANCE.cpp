@@ -8,29 +8,29 @@ void IRRADIANCE::setup(){
 
   pinMode(13, OUTPUT);
 
-  
-  // if (analogRead (A1) > 900 && analogRead (A1) < 1000)
-  //  while (!Serial) ;
-  delay(500);
   _setupRTC();
   _setupSD();
   _setupINA219();
+
+  _writeFile();
 
   fileConfigure();
 
   _configureSensor();
 
-  _isConfigured = false;
   if(_isConfigured){
     _setFlagConfigure();
   }
-  digitalWrite(13, HIGH);
-  delay(1000);
-  digitalWrite(13, LOW);
+  
+  while (!Serial) ;
+
+  Serial.println("Sensor Configurado");
 }
 
 void IRRADIANCE::fileConfigure(){
+  Serial.println("file");
   if(SD.exists("config.txt")){
+    Serial.println("config.txt");
     _configFile = SD.open("config.txt");
     compareCommands(0);
     _configFile.close();
@@ -108,8 +108,6 @@ void IRRADIANCE::_configureSensor(){
     _numberChanels = EEPROMReadInt(6);
     Serial.println(_numberTime);
     Serial.println(_typeTime);
-    Serial.println(_isATtinny);
-    Serial.println(_numberChanels);
   }else{
     _isConfigured =false;
   }
@@ -204,15 +202,15 @@ void IRRADIANCE::_setTime(int input){
   int time = timeRead();
   switch (timeTimeRead){
     case 's':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, ':');
       _typeTime = ':';
       break;
     case 'm':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, ';');
       _typeTime = ';';
       break;
     case 'h':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, '<');
       _typeTime = '<';
       break;
     default:
@@ -229,9 +227,8 @@ void IRRADIANCE::_setTime(int input){
 void IRRADIANCE::_sendTimeATtiny85(){
   Serial.println("Enviando tempo para ATtiny");
   while(!isTimeset){
-    delay(500);
     swsri.println(_typeTime);
-    delay(500);
+    delay(10);
     if(_numberTime > 9){
       swsri.print(_numberTime/10);
       swsri.println(_numberTime%10);
@@ -313,7 +310,6 @@ void IRRADIANCE::_writeFile(){
     writeINA219_3(_file);
     _file.close();
     Serial.println("dados gravados");
-    swsri.println('.');
   }else{
     Serial.println("Erro abrir arquivo");
   }
@@ -389,11 +385,11 @@ void IRRADIANCE::speedMode(){
 }
 
 void IRRADIANCE::runTimeSensor(){
-  if(firsTimeRead){
-    Serial.println("Gravando dados...");
-    _writeFile();
-    firsTimeRead = false;
-  }
+  // if(firsTimeRead){
+  //   Serial.println("Gravando dados...");
+  //   _writeFile();
+  //   firsTimeRead = false;
+  // }
   if (Serial.available() > 0){
     compareCommands(1);
   }
@@ -404,10 +400,3 @@ void IRRADIANCE::runTimeSensor(){
     speedMode();
   }
 }
-
-// P 3M 
-// A 3
-// D P
-// D A
-
-//MEMORIA FLASH, CONFIGURAR
