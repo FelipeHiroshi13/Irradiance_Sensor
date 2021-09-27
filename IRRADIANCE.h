@@ -52,7 +52,7 @@ class IRRADIANCE{
 
     private:
         //_sensor porta analogica
-        uint8_t _sensor;
+        uint8_t _sensor = A0;
 
         char _typeTime;
         uint8_t _numberTime;

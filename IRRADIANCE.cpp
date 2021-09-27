@@ -12,22 +12,25 @@ void IRRADIANCE::setup(){
   _setupSD();
   _setupINA219();
 
+  _writeFile();
+
   fileConfigure();
 
   _configureSensor();
-  if(!_isConfigured){
-    compareCommands(1);
-  }
+
   if(_isConfigured){
     _setFlagConfigure();
   }
-  digitalWrite(13, HIGH);
-  delay(1500);
-  digitalWrite(13, LOW);
+  
+  while (!Serial) ;
+
+  Serial.println("Sensor Configurado");
 }
 
 void IRRADIANCE::fileConfigure(){
+  Serial.println("file");
   if(SD.exists("config.txt")){
+    Serial.println("config.txt");
     _configFile = SD.open("config.txt");
     compareCommands(0);
     _configFile.close();
@@ -40,8 +43,8 @@ void IRRADIANCE::fileConfigure(){
 void IRRADIANCE::_setupRTC(){
     if (! _rtc.begin()) {
         Serial.println("Couldn't find RTC");
-        Serial.flush();
-        abort();
+        //Serial.flush();
+        //abort();
     }
 
     if (_rtc.lostPower()) {
@@ -73,7 +76,7 @@ void IRRADIANCE::_setupINA219(){
   INA219_1.setCalibration_16V_400mA();
   INA219_2.setCalibration_16V_400mA();
   INA219_3.setCalibration_16V_400mA();
-  Serial.println("IRRADIANCE SENSOR");
+  Serial.println("SENSOR INiCIALIZADO");
 }
 
 void IRRADIANCE::writeINA219_1(File file){
@@ -97,7 +100,7 @@ void IRRADIANCE::writeINA219_3(File file){
 }
 
 void IRRADIANCE::_configureSensor(){
-  if(EEPROMReadInt(0) == 1234){         //FLAG EEPROM configured
+  if(EEPROMReadInt(0) == 1234){     
     _isConfigured = true;
     _numberTime = EEPROMReadInt(2);
     _typeTime =  EEPROM.read(4);
@@ -105,10 +108,12 @@ void IRRADIANCE::_configureSensor(){
     _numberChanels = EEPROMReadInt(6);
     Serial.println(_numberTime);
     Serial.println(_typeTime);
-    Serial.println(_isATtinny);
-    Serial.println(_numberChanels);
   }else{
-      _isConfigured =false;
+    _isConfigured =false;
+  }
+  if(_numberTime > 0){
+    Serial.println("Enviando dados na flash");
+    _sendTimeATtiny85();
   }
 }
 
@@ -134,7 +139,6 @@ void IRRADIANCE::EEPROMWriteInt(int address, int value) {
 
 void IRRADIANCE::compareCommands(int input){
   char command = input == 0 ? _readFile() : readCommand();
-  Serial.println(command);
   switch (command){
   case 'p':
     EEPROM.write(5, 1);
@@ -142,7 +146,7 @@ void IRRADIANCE::compareCommands(int input){
     _setTime(input);
     break;
   case 'a':
-    Serial.println("alta velocidade");
+    Serial.println("Alta velocidade");
     EEPROM.write(5, 0);
     _isATtinny = false;
     _setNumberChannels(input);
@@ -156,14 +160,12 @@ void IRRADIANCE::compareCommands(int input){
   default:
     break;
   }
-  Serial.println("oioioio");
 }
 
 char IRRADIANCE::readCommand(){
   while(true){
     if (Serial.available() > 0) {
       char command = Serial.read();
-      Serial.println(command);
       if(command != '\n' && command != '\r' && command != ' '){
         return command;
       }
@@ -181,7 +183,6 @@ int IRRADIANCE::timeRead(){
     char c = Serial.read ();
     if(c == 's' || c == 'm' || c == 'h'){
       timeTimeRead = c;
-      Serial.println(timeTimeRead);
     }
     if ( c != '\r' && i < 15 && c > 47 && c < 58){
       input[i++] = c;
@@ -190,7 +191,6 @@ int IRRADIANCE::timeRead(){
       i = 0;
        number = atoi( input );
       if(number != 0){
-        Serial.println(number);
         return number;;
       }
     }
@@ -200,19 +200,17 @@ int IRRADIANCE::timeRead(){
 
 void IRRADIANCE::_setTime(int input){
   int time = timeRead();
-  Serial.println("entrei");
-  //char typeTime =  input == 0 ? _readFile() : readCommand();
   switch (timeTimeRead){
     case 's':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, ':');
       _typeTime = ':';
       break;
     case 'm':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, ';');
       _typeTime = ';';
       break;
     case 'h':
-      EEPROM.write(4, timeTimeRead);
+      EEPROM.write(4, '<');
       _typeTime = '<';
       break;
     default:
@@ -227,12 +225,10 @@ void IRRADIANCE::_setTime(int input){
 }
 
 void IRRADIANCE::_sendTimeATtiny85(){
-  Serial.println(isTimeset);
+  Serial.println("Enviando tempo para ATtiny");
   while(!isTimeset){
-    Serial.println(_typeTime);
-    delay(500);
     swsri.println(_typeTime);
-    delay(500);
+    delay(10);
     if(_numberTime > 9){
       swsri.print(_numberTime/10);
       swsri.println(_numberTime%10);
@@ -242,9 +238,8 @@ void IRRADIANCE::_sendTimeATtiny85(){
     char c = swsri.read();
     if(c == '1')
       isTimeset = true;
-    Serial.println('0');
   }
-  Serial.println('1');
+  Serial.println("Tempo Enviado");
 }
 
 void IRRADIANCE::_setNumberChannels(int input){
@@ -315,7 +310,6 @@ void IRRADIANCE::_writeFile(){
     writeINA219_3(_file);
     _file.close();
     Serial.println("dados gravados");
-    swsri.println('.');
   }else{
     Serial.println("Erro abrir arquivo");
   }
@@ -336,27 +330,6 @@ void IRRADIANCE::_formatTime(File file){
     file.print(':');
     file.print(now.second(), DEC);
     file.print(',');
-}
-
-void IRRADIANCE::checkTimeRead(){
-  DateTime now;
-  now = _rtc.now();
-  switch (_typeTime){
-  case ':':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  case ';':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  case '<':
-    if(now.second()%_numberTime == 0)
-      _writeFile();
-    break;
-  default:
-    break;
-  }
 }
 
 float IRRADIANCE::getISC_AD627(){
@@ -412,11 +385,11 @@ void IRRADIANCE::speedMode(){
 }
 
 void IRRADIANCE::runTimeSensor(){
-  if(firsTimeRead){
-    Serial.println("first time");
-    _writeFile();
-    firsTimeRead = false;
-  }
+  // if(firsTimeRead){
+  //   Serial.println("Gravando dados...");
+  //   _writeFile();
+  //   firsTimeRead = false;
+  // }
   if (Serial.available() > 0){
     compareCommands(1);
   }
@@ -426,12 +399,4 @@ void IRRADIANCE::runTimeSensor(){
     Serial.println("Speed Mode");
     speedMode();
   }
- 
 }
-
-// P 3M 
-// A 3
-// D P
-// D A
-
-//MEMORIA FLASH, CONFIGURAR
